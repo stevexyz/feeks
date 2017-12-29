@@ -114,6 +114,18 @@ def pc_to_list(board, moves_first):
 
 	return sorted(out, key=itemgetter('score'), reverse = True) 
 
+def blind(board, m):
+	victim = board.piece_at(m.to_square)
+	victim_eval = material_table[victim.symbol()]
+
+	me = board.piece_at(m.from_square)
+	me_eval = material_table[me.symbol()]
+
+	return victim_eval < me_eval and board.attackers(not board.turn, m.to_square)
+
+def is_draw(board):
+	return board.is_stalemate() or board.is_insufficient_material() or board.can_claim_threefold_repetition() or board.can_claim_fifty_moves() or board.can_claim_draw()
+
 def qs(board, alpha, beta):
 	global to_flag
 	if to_flag.is_set():
@@ -125,7 +137,7 @@ def qs(board, alpha, beta):
 	if board.is_checkmate():
 		return -checkmate
 
-	if board.is_stalemate() or board.is_insufficient_material() or board.can_claim_threefold_repetition() or board.can_claim_fifty_moves() or board.can_claim_draw():
+	if is_draw(board):
 		return 0
 
 	best = -infinite
@@ -151,15 +163,8 @@ def qs(board, alpha, beta):
 		if is_check == False and is_capture_move == False and m.promotion == None:
 			continue
 
-		if is_capture_move:
-			victim = board.piece_at(m.to_square)
-			victim_eval = material_table[victim.symbol()]
-
-			me = board.piece_at(m.from_square)
-			me_eval = material_table[me.symbol()]
-
-			if victim_eval < me_eval and board.attackers(not board.turn, m.to_square):
-				continue
+		if is_capture_move and blind(board, m):
+			continue
 
 		move_count += 1
 
@@ -235,7 +240,7 @@ def search(board, alpha, beta, depth, siblings, max_depth):
 	if board.is_checkmate():
 		return (-checkmate, None)
 
-	if board.is_stalemate() or board.is_insufficient_material() or board.can_claim_threefold_repetition() or board.can_claim_fifty_moves() or board.can_claim_draw():
+	if is_draw(board):
 		return (0, None)
 
 	best = -infinite
