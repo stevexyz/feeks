@@ -169,6 +169,10 @@ def main():
 
 		cm_thread_stop()
 
+	except KeyboardInterrupt as ki:
+		l('ctrl+c pressed')
+		cm_thread_stop()
+
 	except Exception as ex:
 		l(str(ex))
 		l(traceback.format_exc())

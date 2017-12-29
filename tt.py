@@ -52,7 +52,6 @@ def tt_store(board, alpha, beta, score, move, depth):
 	use_ss2 = None
 	min_depth = 99999
 
-	stored = False
 	for i in xrange(0, tt_sub_size):
 		if tt[idx][i]['hash'] == h:
 			if tt[idx][i]['depth'] > depth:
@@ -63,9 +62,7 @@ def tt_store(board, alpha, beta, score, move, depth):
 
 			tt[idx][i] = record
 
-			stored = True
-
-			break
+			return
 
 		if tt[idx][i]['age'] != tt_age:
 			use_ss = i
@@ -73,11 +70,10 @@ def tt_store(board, alpha, beta, score, move, depth):
 			min_depth = tt[idx][i]['depth']
 			use_ss2 = i
 
-	if not stored:
-		if use_ss:
-			tt[idx][use_ss] = record
-		else:
-			tt[idx][use_ss2] = record
+	if use_ss:
+		tt[idx][use_ss] = record
+	else:
+		tt[idx][use_ss2] = record
 
 def tt_lookup(board):
 	global tt_size, tt_sub_size, tt

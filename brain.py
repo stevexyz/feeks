@@ -73,11 +73,19 @@ def material(board):
 	return white - black
 
 def mobility(board):
-	white_n = board.legal_moves.count()
+	if board.turn:
+		white_n = board.legal_moves.count()
 
-	board.push(chess.Move.null())
-	black_n = board.legal_moves.count()
-	board.pop()
+		board.push(chess.Move.null())
+		black_n = board.legal_moves.count()
+		board.pop()
+
+	else:
+		black_n = board.legal_moves.count()
+
+		board.push(chess.Move.null())
+		white_n = board.legal_moves.count()
+		board.pop()
 
 	return white_n - black_n
 
