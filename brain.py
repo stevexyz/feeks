@@ -5,7 +5,7 @@
 
 import chess
 import chess.pgn
-from psq import psq
+from psq import psq, psq_individual
 from tt import tt_inc_age, tt_store, tt_lookup, tt_get_pv
 from log import l
 from operator import itemgetter
@@ -102,6 +102,11 @@ def pc_to_list(board, moves_first):
 		victim = board.piece_at(m.to_square)
 		if victim:
 			score += material_table[victim.symbol()] << 8
+
+		else:
+			me = board.piece_at(m.from_square)
+
+			score += psq_individual(m.to_square, me) - psq_individual(m.from_square, me)
 
 		record = { 'score' : score, 'move' : m }
 
