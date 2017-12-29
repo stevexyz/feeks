@@ -59,18 +59,18 @@ def reset_stats():
 	stats_node_count = stats_tt_checks = stats_tt_hits = 0
 
 def material(board):
-	white = black = 0
+	score = 0
 
 	for pos in chess.SQUARES:
 		piece = board.piece_at(pos)
 
 		if piece:
 			if piece.color: # white
-				white += material_table[piece.symbol()]
+				score += material_table[piece.symbol()]
 			else:
-				black += material_table[piece.symbol()]
+				score -= material_table[piece.symbol()]
 
-	return white - black
+	return score
 
 def mobility(board):
 	if board.turn:
