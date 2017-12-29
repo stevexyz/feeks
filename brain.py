@@ -20,6 +20,9 @@ stats_tt_checks = stats_tt_hits = 0
 infinite = 101000
 checkmate = 10000
 
+thread = None
+thread_result = None
+
 material_table = {
 	'P' : 100, 'p' : 100,
 	'N' : 325, 'n' : 325,
@@ -397,3 +400,27 @@ def calc_move(board, max_think_time, max_depth):
 	l('nps: %f, nodes: %d, tt_hits: %f%%' % (stats['stats_node_count'] / diff_ts, stats['stats_node_count'], stats['stats_tt_hits'] * 100.0 / stats['stats_tt_checks']))
 
 	return result
+
+def calc_move_wrapper(board):
+	global thread_result
+
+	thread_result = calc_move(board, None, 9999999)
+
+def cm_thread_start(board):
+	global thread
+	thread = threading.Thread(target=calc_move_wrapper, args=(board,))
+        thread.start() 
+
+def cm_thread_stop():
+	global to_flag
+	if to_flag:
+		set_to_flag(to_flag)
+
+	global thread
+	if thread:
+		thread.join()
+
+	thread = None
+
+	global thread_result
+	return thread_result

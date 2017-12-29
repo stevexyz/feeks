@@ -8,7 +8,7 @@ import chess.pgn
 import sys
 import traceback
 from tt import tt_init
-from brain import calc_move
+from brain import calc_move, cm_thread_start, cm_thread_stop
 from log import l
 
 tt_n_elements = 1024 * 1024 * 2
@@ -43,6 +43,7 @@ def main():
 
 			elif parts[0] == 'ucinewgame':
 				board = chess.Board()
+				cm_thread_stop()
 
 			elif parts[0] == 'position':
 				is_moves = False
@@ -146,10 +147,14 @@ def main():
 				if depth == None:
 					depth = 999
 
+				cm_thread_stop()
+
 				result = calc_move(board, current_duration, depth)
 				if result and result[1]:
 					print 'bestmove %s' % result[1].uci()
 					board.push(result[1])
+
+					cm_thread_start(board.copy())
 
 				else:
 					print 'bestmove a1a1'
@@ -161,6 +166,8 @@ def main():
 				l('unknown: %s' % parts[0])
 
 			sys.stdout.flush()
+
+		cm_thread_stop()
 
 	except Exception as ex:
 		l(str(ex))
