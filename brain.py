@@ -317,8 +317,7 @@ def search(board, alpha, beta, depth, siblings, max_depth):
 				if score >= beta:
 					break
 
-	if move_count > 0:
-		tt_store(board, alpha_orig, beta, best, best_move, depth)
+	tt_store(board, alpha_orig, beta, best, best_move, depth)
 
 	return (best, best_move)
 
@@ -380,7 +379,7 @@ def calc_move(board, max_think_time, max_depth):
 		else:
 			alpha = cur_result[0] - 50
 			if alpha < -infinite:
-				alpha = infinite
+				alpha = -infinite
 
 			beta = cur_result[0] + 50
 			if beta > infinite:
