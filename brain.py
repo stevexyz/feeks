@@ -63,12 +63,13 @@ def material(board):
 
 	for pos in chess.SQUARES:
 		piece = board.piece_at(pos)
+		if not piece:
+			continue
 
-		if piece:
-			if piece.color: # white
-				score += material_table[piece.symbol()]
-			else:
-				score -= material_table[piece.symbol()]
+		if piece.color: # white
+			score += material_table[piece.symbol()]
+		else:
+			score -= material_table[piece.symbol()]
 
 	return score
 
@@ -105,28 +106,31 @@ def pc_to_list(board, moves_first):
 	out = []
 
 	for m in board.legal_moves:
-		score = 0
+		score = None
 
-		if m.promotion:
-			score += pmaterial_table[m.promotion] << 8
+		for i in xrange(0, len(moves_first)):
+			if m == moves_first[i]:
+				score = infinite - i
+				break
 
-		victim = board.piece_at(m.to_square)
-		if victim:
-			score += material_table[victim.symbol()] << 8
+		if not score:
+			victim = board.piece_at(m.to_square)
+			if victim:
+				score = material_table[victim.symbol()] << 8 #18
 
-		else:
-			me = board.piece_at(m.from_square)
+				#me = board.piece_at(m.from_square)
+				#score += (material_table['Q'] - material_table[me.symbol()]) << 8
 
-			score += psq_individual(m.to_square, me) - psq_individual(m.from_square, me)
+			else:
+				me = board.piece_at(m.from_square)
+				score = psq_individual(m.to_square, me) - psq_individual(m.from_square, me)
+
+			if m.promotion:
+				score += pmaterial_table[m.promotion] << 8 #18
 
 		record = { 'score' : score, 'move' : m }
 
 		out.append(record)
-
-	for i in xrange(0, len(moves_first)):
-		for m in out:
-			if m['move'] == moves_first[i]:
-				m['score'] = infinite - i
 
 	return sorted(out, key=itemgetter('score'), reverse = True) 
 
@@ -198,9 +202,6 @@ def qs(board, alpha, beta):
 
 				if score >= beta:
 					break
-
-	if move_count == 0:
-		return evaluate(board)
 
 	return best
 
