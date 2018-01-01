@@ -60,13 +60,12 @@ def material(board):
 
 	for pos in chess.SQUARES:
 		piece = board.piece_at(pos)
-		if not piece:
-			continue
 
-		if piece.color: # white
-			score += material_table[piece.symbol()]
-		else:
-			score -= material_table[piece.symbol()]
+		if piece:
+			if piece.color: # white
+				score += material_table[piece.symbol()]
+			else:
+				score -= material_table[piece.symbol()]
 
 	return score
 
@@ -196,6 +195,9 @@ def qs(board, alpha, beta):
 
 				if score >= beta:
 					break
+
+	if move_count == 0:
+		return evaluate(board)
 
 	return best
 
