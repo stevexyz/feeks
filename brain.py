@@ -262,16 +262,23 @@ def search(board, alpha, beta, depth, siblings, max_depth):
 	### NULL MOVE ###
 	if not board.is_check() and depth >= 3 and not top_of_tree:
 		board.push(chess.Move.null())
-		result = search(board, -beta, -beta + 1, depth - 3, [], depth - 3)
+		nm_result = search(board, -beta, -beta + 1, depth - 3, [], depth - 3)
 		board.pop()
 
-		if result[0] >= beta:
-			return [result[0], None]
+		if -nm_result[0] >= beta:
+			return [-nm_result[0], None]
 	#################
 
 	moves_first = []
 	if tt_hit and tt_hit[1][1]:
 		moves_first.append(tt_hit[1][1])
+
+# FIXME
+#	elif depth >= 5: # IID
+#		iid_result = search(board, alpha, beta, depth - 2, siblings, depth - 2)
+
+#		if iid_result[1] and iid_result[1][1]:
+#			moves_first.append(iid_result[1][1])
 
 	moves_first += siblings
 
