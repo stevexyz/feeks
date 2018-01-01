@@ -5,13 +5,28 @@
 
 import chess
 import chess.pgn
+import math
 import sys
+import time
 import traceback
 from tt import tt_init
 from brain import calc_move
 from log import l
 
 tt_n_elements = 1024 * 1024 * 8
+
+def perft(board, depth):
+	if depth == 1:
+		return board.legal_moves.count()
+
+	total = 0
+
+	for m in board.legal_moves:
+		board.push(m)
+		total += perft(board, depth - 1)
+		board.pop()
+
+	return total
 
 def main():
 	try:
@@ -43,6 +58,29 @@ def main():
 
 			elif parts[0] == 'ucinewgame':
 				board = chess.Board()
+
+			elif parts[0] == 'perft':
+				depth = 4
+				if len(parts) == 2:
+					depth = int(parts[1])
+
+				start = time.time()
+				total = 0
+
+				for m in board.legal_moves:
+					board.push(m)
+					cnt = perft(board, depth - 1)
+					board.pop()
+
+					print '%s: %d' % (m.uci(), cnt)
+
+					total += cnt
+
+				print '==========================='
+				took = time.time() - start
+				print 'Total time (ms) : %d' % math.ceil(took * 1000.0)
+				print 'Nodes searched  : %d' % total
+				print 'Nodes/second    : %d' % math.floor(total / took)
 
 			elif parts[0] == 'position':
 				is_moves = False
