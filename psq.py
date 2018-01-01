@@ -68,7 +68,12 @@ psq_table = { 'P' : [
 def psq_individual(pos, piece):
 	global psq_table
 
-	return psq_table[piece.symbol().upper()][pos]
+	symbol = piece.symbol().upper()
+
+	if piece.color == chess.BLACK: 
+	    return psq_table[symbol][pos] 
+
+	return psq_table[symbol][pos ^ 0x38]
 
 def psq(board):
 	global psq_table
@@ -81,19 +86,6 @@ def psq(board):
 		if not piece:
 			continue
 
-		symbol = piece.symbol().upper()
-
-		if piece.color:
-			table_pos = pos
-
-			val += psq_table[symbol][table_pos]
-
-		else:
-			pos_y = pos / 8
-			pos_x = pos % 8
-
-			table_pos = (7 - pos_y) * 8 + pos_x
-
-			val -= psq_table[symbol][table_pos]
+		val += psq_individual(pos, piece)
 
 	return val

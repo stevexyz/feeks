@@ -137,7 +137,7 @@ def blind(board, m):
 	return victim_eval < me_eval and board.attackers(not board.turn, m.to_square)
 
 def is_draw(board):
-	return board.is_stalemate() or board.is_insufficient_material() or board.can_claim_threefold_repetition() or board.can_claim_fifty_moves() or board.can_claim_draw()
+	return board.is_stalemate() or board.is_insufficient_material() or board.can_claim_fifty_moves() or board.can_claim_draw()
 
 def qs(board, alpha, beta):
 	global to_flag
