@@ -20,9 +20,6 @@ stats_tt_checks = stats_tt_hits = 0
 infinite = 101000
 checkmate = 10000
 
-thread = None
-thread_result = None
-
 material_table = {
 	'P' : 100, 'p' : 100,
 	'N' : 325, 'n' : 325,
@@ -74,21 +71,21 @@ def material(board):
 	return score
 
 def mobility(board):
-	if board.turn:
-		white_n = board.legal_moves.count()
+        if board.turn:
+                white_n = board.legal_moves.count()
 
-		board.push(chess.Move.null())
-		black_n = board.legal_moves.count()
-		board.pop()
+                board.push(chess.Move.null())
+                black_n = board.legal_moves.count()
+                board.pop()
 
-	else:
-		black_n = board.legal_moves.count()
+        else:
+                black_n = board.legal_moves.count()
 
-		board.push(chess.Move.null())
-		white_n = board.legal_moves.count()
-		board.pop()
+                board.push(chess.Move.null())
+                white_n = board.legal_moves.count()
+                board.pop()
 
-	return white_n - black_n
+        return white_n - black_n
 
 def evaluate(board):
 	score = material(board)
@@ -106,31 +103,28 @@ def pc_to_list(board, moves_first):
 	out = []
 
 	for m in board.legal_moves:
-		score = None
+		score = 0
 
-		for i in xrange(0, len(moves_first)):
-			if m == moves_first[i]:
-				score = infinite - i
-				break
+		if m.promotion:
+			score += pmaterial_table[m.promotion] << 8
 
-		if not score:
-			victim = board.piece_at(m.to_square)
-			if victim:
-				score = material_table[victim.symbol()] << 8 #18
+		victim = board.piece_at(m.to_square)
+		if victim:
+			score += material_table[victim.symbol()] << 8
 
-				#me = board.piece_at(m.from_square)
-				#score += (material_table['Q'] - material_table[me.symbol()]) << 8
+		else:
+			me = board.piece_at(m.from_square)
 
-			else:
-				me = board.piece_at(m.from_square)
-				score = psq_individual(m.to_square, me) - psq_individual(m.from_square, me)
-
-			if m.promotion:
-				score += pmaterial_table[m.promotion] << 8 #18
+			score += psq_individual(m.to_square, me) - psq_individual(m.from_square, me)
 
 		record = { 'score' : score, 'move' : m }
 
 		out.append(record)
+
+	for i in xrange(0, len(moves_first)):
+		for m in out:
+			if m['move'] == moves_first[i]:
+				m['score'] = infinite - i
 
 	return sorted(out, key=itemgetter('score'), reverse = True) 
 
@@ -317,7 +311,8 @@ def search(board, alpha, beta, depth, siblings, max_depth):
 				if score >= beta:
 					break
 
-	tt_store(board, alpha_orig, beta, best, best_move, depth)
+	if move_count > 0:
+		tt_store(board, alpha_orig, beta, best, best_move, depth)
 
 	return (best, best_move)
 
@@ -408,27 +403,3 @@ def calc_move(board, max_think_time, max_depth):
 	l('nps: %f, nodes: %d, tt_hits: %f%%' % (stats['stats_node_count'] / diff_ts, stats['stats_node_count'], stats['stats_tt_hits'] * 100.0 / stats['stats_tt_checks']))
 
 	return result
-
-def calc_move_wrapper(board):
-	global thread_result
-
-	thread_result = calc_move(board, None, 9999999)
-
-def cm_thread_start(board):
-	global thread
-	thread = threading.Thread(target=calc_move_wrapper, args=(board,))
-        thread.start() 
-
-def cm_thread_stop():
-	global to_flag
-	if to_flag:
-		set_to_flag(to_flag)
-
-	global thread
-	if thread:
-		thread.join()
-
-	thread = None
-
-	global thread_result
-	return thread_result

@@ -8,10 +8,10 @@ import chess.pgn
 import sys
 import traceback
 from tt import tt_init
-from brain import calc_move, cm_thread_start, cm_thread_stop
+from brain import calc_move
 from log import l
 
-tt_n_elements = 1024 * 1024 * 2
+tt_n_elements = 1024 * 1024 * 8
 
 def main():
 	try:
@@ -43,7 +43,6 @@ def main():
 
 			elif parts[0] == 'ucinewgame':
 				board = chess.Board()
-				cm_thread_stop()
 
 			elif parts[0] == 'position':
 				is_moves = False
@@ -147,14 +146,10 @@ def main():
 				if depth == None:
 					depth = 999
 
-				cm_thread_stop()
-
 				result = calc_move(board, current_duration, depth)
 				if result and result[1]:
 					print 'bestmove %s' % result[1].uci()
 					board.push(result[1])
-
-					cm_thread_start(board.copy())
 
 				else:
 					print 'bestmove a1a1'
@@ -167,16 +162,18 @@ def main():
 
 			sys.stdout.flush()
 
-		cm_thread_stop()
-
 	except KeyboardInterrupt as ki:
 		l('ctrl+c pressed')
-		cm_thread_stop()
 
 	except Exception as ex:
 		l(str(ex))
 		l(traceback.format_exc())
 
+def test():
+	tt_init(tt_n_elements)
+	board = chess.Board()
+	calc_move(board, 60.0, 999999)
+
 #import cProfile
-#cProfile.run('main()', 'restats')
+#cProfile.run('test()', 'restats')
 main()

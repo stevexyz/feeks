@@ -15,7 +15,9 @@ def tt_init(size):
 	print ' Set TT size to %d entries ' % size
 	tt_size = size
 
-	initial_entry = dict({ 'hash' : -1, 'age' : -1 })
+	dummy_move = chess.Move(0, 0)
+
+	initial_entry = dict({ 'hash' : -1, 'age' : -1, 'score' : -1, 'flags': '_', 'depth': 0, 'move': dummy_move })
 	temp = [initial_entry.copy() for i in xrange(tt_sub_size)]
 
 	tt = [temp for i in xrange(tt_size)]
