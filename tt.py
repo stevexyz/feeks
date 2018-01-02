@@ -59,7 +59,7 @@ def tt_store(board, alpha, beta, score, move, depth):
 			if tt[idx][i]['depth'] > depth:
 				return
 
-			if tt[idx][i]['flags'] != 'E' and tt[idx][i]['depth'] == depth:
+			if flags != 'E' and tt[idx][i]['depth'] == depth:
 				return
 
 			tt[idx][i] = record
