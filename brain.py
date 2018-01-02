@@ -111,9 +111,9 @@ def pc_to_list(board, moves_first):
 		if victim:
 			score += material_table[victim.symbol()] << 8
 
+		# -20 elo: 
 		#else:
 		#	me = board.piece_at(m.from_square)
-
 		#	score += psq_individual(m.to_square, me) - psq_individual(m.from_square, me)
 
 		record = { 'score' : score, 'move' : m }
@@ -320,7 +320,7 @@ def search(board, alpha, beta, depth, siblings, max_depth):
 				if score >= beta:
 					break
 
-	if move_count > 0 and not to_flag.is_set():
+	if alpha > alpha_orig and not to_flag.is_set():
 		tt_store(board, alpha_orig, beta, best, best_move, depth)
 
 	return (best, best_move)
