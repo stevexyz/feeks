@@ -6,11 +6,12 @@
 import chess
 import chess.pgn
 import math
+from select import select
 import sys
 import time
 import traceback
 from tt import tt_init
-from brain import calc_move
+from brain import calc_move, cm_thread_start, cm_thread_check, cm_thread_stop
 from log import l
 
 tt_n_elements = 1024 * 1024 * 8
@@ -184,7 +185,22 @@ def main():
 				if depth == None:
 					depth = 999
 
-				result = calc_move(board, current_duration, depth)
+				cm_thread_start(board, current_duration, depth)
+
+				while cm_thread_check():
+					rlist, _, _ = select([sys.stdin], [], [], 0.01)
+					if not rlist:
+						continue
+
+					line = sys.stdin.readline()
+					if line != None:
+						line = line.rstrip('\n')
+
+						if line == 'stop':
+							break
+
+				result = cm_thread_stop()
+
 				if result and result[1]:
 					print 'bestmove %s' % result[1].uci()
 					board.push(result[1])

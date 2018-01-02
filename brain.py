@@ -111,10 +111,10 @@ def pc_to_list(board, moves_first):
 		if victim:
 			score += material_table[victim.symbol()] << 8
 
-		else:
-			me = board.piece_at(m.from_square)
+		#else:
+		#	me = board.piece_at(m.from_square)
 
-			score += psq_individual(m.to_square, me) - psq_individual(m.from_square, me)
+		#	score += psq_individual(m.to_square, me) - psq_individual(m.from_square, me)
 
 		record = { 'score' : score, 'move' : m }
 
@@ -320,7 +320,7 @@ def search(board, alpha, beta, depth, siblings, max_depth):
 				if score >= beta:
 					break
 
-	if move_count > 0:
+	if move_count > 0 and not to_flag.is_set():
 		tt_store(board, alpha_orig, beta, best, best_move, depth)
 
 	return (best, best_move)
@@ -418,3 +418,36 @@ def calc_move(board, max_think_time, max_depth):
 	l('nps: %f, nodes: %d, tt_hits: %f%%' % (stats['stats_node_count'] / diff_ts, stats['stats_node_count'], stats['stats_tt_hits'] * 100.0 / stats['stats_tt_checks']))
 
 	return result
+
+def calc_move_wrapper(board, duration, depth):
+        global thread_result
+
+        thread_result = calc_move(board, duration, depth)
+
+def cm_thread_start(board,duration=None,depth=999999):
+        global thread
+        thread = threading.Thread(target=calc_move_wrapper, args=(board,duration,depth,))
+        thread.start()
+
+def cm_thread_check():
+        global thread
+        if thread:
+                thread.join(0.05)
+
+		return thread.is_alive()
+
+	return False
+
+def cm_thread_stop():
+        global to_flag
+        if to_flag:
+                set_to_flag(to_flag)
+
+        global thread
+        if thread:
+                thread.join()
+		del thread
+		thread = None
+
+        global thread_result
+        return thread_result
