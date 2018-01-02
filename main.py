@@ -108,7 +108,7 @@ def main():
 				movetime = None
 				depth = None
 				wtime = btime = None
-				winc = binc = None
+				winc = binc = 0
 				movestogo = None
 
 				nr = 1
@@ -152,7 +152,7 @@ def main():
 				if current_duration:
 					current_duration = float(current_duration) / 1000.0
 
-				elif wtime and btime and winc and binc:
+				elif wtime and btime:
 					ms = wtime
 					time_inc = winc
 					if not board.turn:
