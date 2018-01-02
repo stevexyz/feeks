@@ -336,13 +336,19 @@ def calc_move(board, max_think_time, max_depth):
 		t.start()
 
 	reset_stats()
+	tt_inc_age()
 
 	l(board.fen())
 
-	tt_inc_age()
+	if board.legal_moves.count() == 1:
+		l('only 1 move possible')
+
+		for m in board.legal_moves:
+			break
+
+		return [ 0, m, 0, 0.0 ]
 
 	result = None
-
 	alpha = -infinite
 	beta = infinite
 
