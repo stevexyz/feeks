@@ -43,6 +43,7 @@ to_flag = None
 
 def set_to_flag(to_flag):
 	to_flag.set()
+	l("time is up");
 
 def get_stats():
 	global stats_avg_bco_index, stats_node_count, stats_tt_hits, stats_tt_checks
@@ -342,9 +343,13 @@ def search(board, alpha, beta, depth, siblings, max_depth):
 					stats_avg_bco_index_cnt += 1
 					break
 
-	is_check = board.is_check()
-	if move_count == 0 and is_check:
-		return 0
+	if move_count == 0:
+		is_check = board.is_check()
+
+		if not is_check:
+			return 0
+
+		l('ERR')
 
 	if alpha > alpha_orig and not to_flag.is_set():
 		tt_store(board, alpha_orig, beta, best, best_move, depth)

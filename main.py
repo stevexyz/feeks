@@ -61,6 +61,22 @@ def main():
 			elif parts[0] == 'ucinewgame':
 				board = Board()
 
+			elif parts[0] == 'auto':
+				tt = 1000
+				if len(parts) == 2:
+					tt = float(parts[1])
+
+				ab = Board()
+				while True:
+					m = calc_move(ab, tt, 999999)
+					if m == None:
+						break
+
+					ab.push(m[1])
+					print m
+
+				print 'done'
+
 			elif parts[0] == 'perft':
 				depth = 4
 				if len(parts) == 2:
