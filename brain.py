@@ -342,6 +342,7 @@ def search(board, alpha, beta, depth, siblings, max_depth):
 					stats_avg_bco_index_cnt += 1
 					break
 
+	is_check = board.is_check()
 	if move_count == 0 and is_check:
 		return 0
 
