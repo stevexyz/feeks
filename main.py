@@ -3,6 +3,7 @@
 # (C) 2017 by folkert@vanheusden.com
 # released under AGPL v3.0
 
+from board import Board
 import chess
 import chess.pgn
 import math
@@ -33,7 +34,7 @@ def main():
 	try:
 		tt_init(tt_n_elements)
 
-		board = chess.Board()
+		board = Board()
 
 		while True:
 			line = sys.stdin.readline()
@@ -58,7 +59,7 @@ def main():
 				print 'readyok'
 
 			elif parts[0] == 'ucinewgame':
-				board = chess.Board()
+				board = Board()
 
 			elif parts[0] == 'perft':
 				depth = 4
@@ -91,11 +92,11 @@ def main():
 						board.push_uci(parts[nr])
 
 					elif parts[nr] ==  'fen':
-						board = chess.Board(' '.join(parts[nr + 1:]))
+						board = Board(' '.join(parts[nr + 1:]))
 						break
 
 					elif parts[nr] == 'startpos':
-						board = chess.Board()
+						board = Board()
 
 					elif parts[nr] == 'moves':
 						is_moves = True
@@ -225,7 +226,7 @@ def main():
 
 def test():
 	tt_init(tt_n_elements)
-	board = chess.Board()
+	board = Board()
 	calc_move(board, 60.0, 999999)
 
 #import cProfile

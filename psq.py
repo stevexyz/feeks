@@ -82,7 +82,6 @@ def psq(board):
 
 	for pos in chess.SQUARES:
 		piece = board.piece_at(pos)
-
 		if not piece:
 			continue
 

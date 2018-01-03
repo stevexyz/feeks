@@ -1,5 +1,6 @@
 import chess
 import chess.polyglot
+from log import l
 
 # (C) 2017 by folkert@vanheusden.com
 # released under AGPL v3.0
@@ -12,12 +13,12 @@ tt_age = 0
 def tt_init(size):
 	global tt_size, tt_sub_size, tt
 
-	print ' Set TT size to %d entries ' % size
+	l('Set TT size to %d entries ' % size)
 	tt_size = size
 
 	dummy_move = chess.Move(0, 0)
 
-	initial_entry = dict({ 'hash' : -1, 'age' : -1, 'score' : -1, 'flags': '_', 'depth': 0, 'move': dummy_move })
+	initial_entry = dict({ 'hash' : -1, 'age' : -1, 'score' : 0, 'flags': '_', 'depth': -1, 'move': dummy_move })
 	temp = [initial_entry.copy() for i in xrange(tt_sub_size)]
 
 	tt = [temp for i in xrange(tt_size)]
@@ -27,8 +28,13 @@ def tt_inc_age():
 
 	tt_age += 1
 
+def tt_calc_slot(h):
+	global tt_size
+
+	return h % tt_size
+
 def tt_store(board, alpha, beta, score, move, depth):
-	global tt_size, tt_sub_size, tt, tt_age
+	global tt_sub_size, tt, tt_age
 
 	h = chess.polyglot.zobrist_hash(board)
 
@@ -47,7 +53,7 @@ def tt_store(board, alpha, beta, score, move, depth):
 		'move' : move
 		}
 
-	idx = h % tt_size
+	idx = tt_calc_slot(h)
 
 	use_ss = None
 
@@ -78,11 +84,11 @@ def tt_store(board, alpha, beta, score, move, depth):
 		tt[idx][use_ss2] = record
 
 def tt_lookup(board):
-	global tt_size, tt_sub_size, tt
+	global tt_sub_size, tt
 
 	h = chess.polyglot.zobrist_hash(board)
 
-	idx = h % tt_size
+	idx = tt_calc_slot(h)
 
 	for i in xrange(0, tt_sub_size):
 		if tt[idx][i]['hash'] == h:

@@ -16,8 +16,9 @@ import time
 
 stats_node_count = 0
 stats_tt_checks = stats_tt_hits = 0
+stats_avg_bco_index_cnt = stats_avg_bco_index = 0
 
-infinite = 101000
+infinite = 131072
 checkmate = 10000
 
 material_table = {
@@ -44,16 +45,18 @@ def set_to_flag(to_flag):
 	to_flag.set()
 
 def get_stats():
-	global stats_node_count, stats_tt_hits, stats_tt_checks
+	global stats_avg_bco_index, stats_node_count, stats_tt_hits, stats_tt_checks
 
 	return { 'stats_node_count' : stats_node_count,
 		'stats_tt_hits' : stats_tt_hits,
-		'stats_tt_checks' : stats_tt_checks }
+		'stats_tt_checks' : stats_tt_checks,
+		'stats_avg_bco_index_cnt' : stats_avg_bco_index_cnt,
+		'stats_avg_bco_index' : stats_avg_bco_index }
 
 def reset_stats():
-	global stats_node_count, stats_tt_hits, stats_tt_checks
+	global stats_avg_bco_index_cnt, stats_avg_bco_index, stats_node_count, stats_tt_hits, stats_tt_checks
 
-	stats_node_count = stats_tt_checks = stats_tt_hits = 0
+	stats_avg_bco_index_cnt = stats_avg_bco_index = stats_node_count = stats_tt_checks = stats_tt_hits = 0
 
 def material(board):
 	score = 0
@@ -61,27 +64,29 @@ def material(board):
 	for pos in chess.SQUARES:
 		piece = board.piece_at(pos)
 
-		if piece:
-			if piece.color: # white
-				score += material_table[piece.symbol()]
-			else:
-				score -= material_table[piece.symbol()]
+		if not piece:
+			continue
+
+		if piece.color: # white
+			score += material_table[piece.symbol()]
+		else:
+			score -= material_table[piece.symbol()]
 
 	return score
 
 def mobility(board):
         if board.turn:
-                white_n = board.legal_moves.count()
+                white_n = board.move_count()
 
                 board.push(chess.Move.null())
-                black_n = board.legal_moves.count()
+                black_n = board.move_count()
                 board.pop()
 
         else:
-                black_n = board.legal_moves.count()
+                black_n = board.move_count()
 
                 board.push(chess.Move.null())
-                white_n = board.legal_moves.count()
+                white_n = board.move_count()
                 board.pop()
 
         return white_n - black_n
@@ -101,15 +106,18 @@ def evaluate(board):
 def pc_to_list(board, moves_first):
 	out = []
 
-	for m in board.legal_moves:
+	for m in board.get_move_list():
 		score = 0
 
 		if m.promotion:
-			score += pmaterial_table[m.promotion] << 8
+			score += pmaterial_table[m.promotion] << 18
 
 		victim = board.piece_at(m.to_square)
 		if victim:
-			score += material_table[victim.symbol()] << 8
+			score += material_table[victim.symbol()] << 18
+
+		#	me = board.piece_at(m.from_square)
+		#	score += (material_table['Q'] - material_table[me.symbol()]) << 8
 
 		# -20 elo: 
 		#else:
@@ -137,7 +145,12 @@ def blind(board, m):
 	return victim_eval < me_eval and board.attackers(not board.turn, m.to_square)
 
 def is_draw(board):
-	return board.is_stalemate() or board.is_insufficient_material() or board.can_claim_fifty_moves() or board.can_claim_draw()
+	if board.halfmove_clock >= 100:
+		return True
+
+	# FIXME enough material counts
+
+	return False
 
 def qs(board, alpha, beta):
 	global to_flag
@@ -194,9 +207,15 @@ def qs(board, alpha, beta):
 				alpha = score
 
 				if score >= beta:
+					global stats_avg_bco_index, stats_avg_bco_index_cnt
+					stats_avg_bco_index += move_count - 1
+					stats_avg_bco_index_cnt += 1
 					break
 
 	if move_count == 0:
+		if is_check: # stale mate
+			return 0
+
 		return evaluate(board)
 
 	return best
@@ -206,7 +225,7 @@ def tt_lookup_helper(board, alpha, beta, depth):
 	if not tt_hit:
 		return None
 
-	if tt_hit['move'] != None and not tt_hit['move'] in board.legal_moves:
+	if tt_hit['move'] != None and not tt_hit['move'] in board.get_move_list():
 		return None
 
 	rc = (tt_hit['score'], tt_hit['move'])
@@ -318,7 +337,13 @@ def search(board, alpha, beta, depth, siblings, max_depth):
 				siblings.insert(0, m)
 
 				if score >= beta:
+					global stats_avg_bco_index, stats_avg_bco_index_cnt
+					stats_avg_bco_index += move_count - 1
+					stats_avg_bco_index_cnt += 1
 					break
+
+	if move_count == 0 and is_check:
+		return 0
 
 	if alpha > alpha_orig and not to_flag.is_set():
 		tt_store(board, alpha_orig, beta, best, best_move, depth)
@@ -340,10 +365,10 @@ def calc_move(board, max_think_time, max_depth):
 
 	l(board.fen())
 
-	if board.legal_moves.count() == 1:
+	if board.move_count() == 1:
 		l('only 1 move possible')
 
-		for m in board.legal_moves:
+		for m in board.get_move_list():
 			break
 
 		return [ 0, m, 0, 0.0 ]
@@ -400,13 +425,13 @@ def calc_move(board, max_think_time, max_depth):
 	if t:
 		t.cancel()
 
-	l(board.legal_moves)
+	l(board.get_move_list())
 
 	if result == None or result[1] == None:
 		l('random move!')
 		m = None
 
-		for m in board.legal_moves:
+		for m in board.get_move_list():
 			break
 
 		result = [ 0, m, 0, time.time() - start_ts ]
@@ -415,7 +440,10 @@ def calc_move(board, max_think_time, max_depth):
 
 	diff_ts = time.time() - start_ts
 	stats = get_stats()
-	l('nps: %f, nodes: %d, tt_hits: %f%%' % (stats['stats_node_count'] / diff_ts, stats['stats_node_count'], stats['stats_tt_hits'] * 100.0 / stats['stats_tt_checks']))
+	avg_bco = -1
+	if stats['stats_avg_bco_index_cnt']:
+		avg_bco = float(stats['stats_avg_bco_index']) / stats['stats_avg_bco_index_cnt']
+	l('nps: %f, nodes: %d, tt_hits: %f%%, avg bco index: %.2f' % (stats['stats_node_count'] / diff_ts, stats['stats_node_count'], stats['stats_tt_hits'] * 100.0 / stats['stats_tt_checks'], avg_bco))
 
 	return result
 
