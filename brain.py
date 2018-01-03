@@ -347,7 +347,7 @@ def search(board, alpha, beta, depth, siblings, max_depth):
 		is_check = board.is_check()
 
 		if not is_check:
-			return 0
+			return (0, None)
 
 		l('ERR')
 

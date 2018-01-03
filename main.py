@@ -13,7 +13,7 @@ import time
 import traceback
 from tt import tt_init
 from brain import calc_move, cm_thread_start, cm_thread_check, cm_thread_stop
-from log import l
+from log import set_l, l
 
 tt_n_elements = 1024 * 1024 * 8
 
@@ -244,6 +244,9 @@ def test():
 	tt_init(tt_n_elements)
 	board = Board()
 	calc_move(board, 60.0, 999999)
+
+if len(sys.argv) == 2:
+	set_l(sys.argv[1])
 
 #import cProfile
 #cProfile.run('test()', 'restats')
