@@ -246,7 +246,7 @@ def tt_lookup_helper(board, alpha, beta, depth):
 
 	return [ False, rc ]
 
-def search(board, alpha, beta, depth, siblings, max_depth):
+def search(board, alpha, beta, depth, siblings, max_depth, is_nm):
 	global to_flag
 	if to_flag.is_set():
 		return (-infinite, None)
@@ -281,13 +281,13 @@ def search(board, alpha, beta, depth, siblings, max_depth):
 	best_move = None
 
 	### NULL MOVE ###
-	if not board.is_check() and depth >= 3 and not top_of_tree:
+	if ot board.is_check() and depth >= 3 and not top_of_tree and not is_nm:
 		board.push(chess.Move.null())
-		nm_result = search(board, -beta, -beta + 1, depth - 3, [], depth - 3)
+		nm_result = search(board, -beta, -beta + 1, depth - 3, [], max_depth, True)
 		board.pop()
 
 		if -nm_result[0] >= beta:
-			return [-nm_result[0], None]
+			return (-nm_result[0], None)
 	#################
 
 	moves_first = []
@@ -315,7 +315,7 @@ def search(board, alpha, beta, depth, siblings, max_depth):
 
 		board.push(m)
 
-		result = search(board, -beta, -alpha, new_depth, new_siblings, max_depth)
+		result = search(board, -beta, -alpha, new_depth, new_siblings, max_depth, False)
 		score = -result[0]
 
 		board.pop()
@@ -382,7 +382,7 @@ def calc_move(board, max_think_time, max_depth):
 	siblings = []
 	start_ts = time.time()
 	for d in xrange(1, max_depth + 1):
-		cur_result = search(board, alpha, beta, d, siblings, d)
+		cur_result = search(board, alpha, beta, d, siblings, d, False)
 
 		diff_ts = time.time() - start_ts
 
