@@ -7,13 +7,12 @@ from board import Board
 import chess
 import chess.pgn
 import math
-import random
 from select import select
 import sys
 import time
 import traceback
 from tt import tt_init
-from brain import calc_move, cm_thread_start, cm_thread_check, cm_thread_stop
+from brain import calc_move, cm_thread_start, cm_thread_check, cm_thread_stop, random_move
 from log import set_l, l
 
 tt_n_elements = 1024 * 1024 * 8
@@ -71,9 +70,7 @@ def main():
 				ab = Board()
 				while True:
 					if n_rnd > 0:
-				                moves = board.get_move_list()
-						idx = random.randint(0, len(moves) - 1)
-						m = moves[idx]
+						m = random_move(ab)
 						n_rnd -= 1
 
 					else:

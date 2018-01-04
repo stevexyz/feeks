@@ -441,11 +441,15 @@ def calc_move(board, max_think_time, max_depth):
 	l(result)
 
 	diff_ts = time.time() - start_ts
+
 	stats = get_stats()
+
 	avg_bco = -1
 	if stats['stats_avg_bco_index_cnt']:
 		avg_bco = float(stats['stats_avg_bco_index']) / stats['stats_avg_bco_index_cnt']
-	l('nps: %f, nodes: %d, tt_hits: %f%%, avg bco index: %.2f' % (stats['stats_node_count'] / diff_ts, stats['stats_node_count'], stats['stats_tt_hits'] * 100.0 / stats['stats_tt_checks'], avg_bco))
+
+	if stats['stats_tt_checks'] and diff_ts > 0:
+		l('nps: %f, nodes: %d, tt_hits: %f%%, avg bco index: %.2f' % (stats['stats_node_count'] / diff_ts, stats['stats_node_count'], stats['stats_tt_hits'] * 100.0 / stats['stats_tt_checks'], avg_bco))
 
 	return result
 
@@ -460,6 +464,15 @@ def calc_move_wrapper(board, duration, depth):
                 l(traceback.format_exc())
 
 		thread_result = None
+
+import random
+def random_move(board):
+	moves = board.get_move_list()
+	idx = random.randint(0, len(moves) - 1)
+	return moves[idx]
+
+thread = None
+thread_result = None
 
 def cm_thread_start(board,duration=None,depth=999999):
         global thread
