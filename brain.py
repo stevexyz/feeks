@@ -6,7 +6,7 @@
 import chess
 import chess.pgn
 from psq import psq, psq_individual
-from tt import tt_inc_age, tt_store, tt_lookup, tt_get_pv
+from tt import tt_inc_age, tt_store, tt_lookup, tt_get_pv, tt_reset_stats, tt_get_stats
 from log import l
 from operator import itemgetter
 import math
@@ -59,6 +59,8 @@ def reset_stats():
 	global stats_avg_bco_index_cnt, stats_avg_bco_index, stats_node_count, stats_tt_hits, stats_tt_checks
 
 	stats_avg_bco_index_cnt = stats_avg_bco_index = stats_node_count = stats_tt_checks = stats_tt_hits = 0
+
+	tt_reset_stats()
 
 def material(pm):
 	score = 0
@@ -251,6 +253,12 @@ def search(board, alpha, beta, depth, siblings, max_depth, is_nm):
 	if to_flag.is_set():
 		return (-infinite, None)
 
+	if board.is_checkmate():
+		return (-checkmate, None)
+
+	if is_draw(board):
+		return (0, None)
+
 	if depth == 0:
 		return (qs(board, alpha, beta), None)
 
@@ -271,17 +279,11 @@ def search(board, alpha, beta, depth, siblings, max_depth, is_nm):
 
 	alpha_orig = alpha
 
-	if board.is_checkmate():
-		return (-checkmate, None)
-
-	if is_draw(board):
-		return (0, None)
-
 	best = -infinite
 	best_move = None
 
 	### NULL MOVE ###
-	if ot board.is_check() and depth >= 3 and not top_of_tree and not is_nm:
+	if not board.is_check() and depth >= 3 and not top_of_tree and not is_nm:
 		board.push(chess.Move.null())
 		nm_result = search(board, -beta, -beta + 1, depth - 3, [], max_depth, True)
 		board.pop()
@@ -446,6 +448,8 @@ def calc_move(board, max_think_time, max_depth):
 
 	if stats['stats_tt_checks'] and diff_ts > 0:
 		l('nps: %f, nodes: %d, tt_hits: %f%%, avg bco index: %.2f' % (stats['stats_node_count'] / diff_ts, stats['stats_node_count'], stats['stats_tt_hits'] * 100.0 / stats['stats_tt_checks'], avg_bco))
+
+	l(tt_get_stats())
 
 	return result
 
