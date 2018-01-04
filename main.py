@@ -15,7 +15,7 @@ from tt import tt_init
 from brain import calc_move, cm_thread_start, cm_thread_check, cm_thread_stop, random_move
 from log import set_l, l
 
-tt_n_elements = 1024 * 1024 * 8
+tt_n_elements = 1024 * 8
 
 def perft(board, depth):
 	if depth == 1:
