@@ -431,12 +431,8 @@ def calc_move(board, max_think_time, max_depth):
 
 	if result == None or result[1] == None:
 		l('random move!')
-		m = None
 
-		for m in board.get_move_list():
-			break
-
-		result = [ 0, m, 0, time.time() - start_ts ]
+		result = [ 0, random_move(board), 0, time.time() - start_ts ]
 
 	l(result)
 
