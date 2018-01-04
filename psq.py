@@ -75,15 +75,13 @@ def psq_individual(pos, piece):
 
 	return psq_table[symbol][pos ^ 0x38]
 
-def psq(board):
+def psq(pm):
 	global psq_table
 
 	val = 0
 
-	for pos in chess.SQUARES:
-		piece = board.piece_at(pos)
-		if not piece:
-			continue
+        for pos in pm:
+                piece = pm[pos]
 
 		val += psq_individual(pos, piece)
 

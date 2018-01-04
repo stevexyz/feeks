@@ -13,6 +13,7 @@ import math
 import sys
 import threading
 import time
+import traceback
 
 stats_node_count = 0
 stats_tt_checks = stats_tt_hits = 0
@@ -59,19 +60,16 @@ def reset_stats():
 
 	stats_avg_bco_index_cnt = stats_avg_bco_index = stats_node_count = stats_tt_checks = stats_tt_hits = 0
 
-def material(board):
+def material(pm):
 	score = 0
 
-	for pos in chess.SQUARES:
-		piece = board.piece_at(pos)
-
-		if not piece:
-			continue
+	for p in pm:
+		piece = pm[p]
 
 		if piece.color: # white
-			score += material_table[piece.symbol()]
+			score += pmaterial_table[piece.piece_type]
 		else:
-			score -= material_table[piece.symbol()]
+			score -= pmaterial_table[piece.piece_type]
 
 	return score
 
@@ -93,9 +91,11 @@ def mobility(board):
         return white_n - black_n
 
 def evaluate(board):
-	score = material(board)
+	pm = board.piece_map()
 
-	score += psq(board) / 4
+	score = material(pm)
+
+	score += psq(pm) / 4
 
 	score += mobility(board) * 10
 
@@ -115,7 +115,8 @@ def pc_to_list(board, moves_first):
 
 		victim = board.piece_at(m.to_square)
 		if victim:
-			score += material_table[victim.symbol()] << 18
+			score += pmaterial_table[victim.piece_type] << 18
+
 
 		#	me = board.piece_at(m.from_square)
 		#	score += (material_table['Q'] - material_table[me.symbol()]) << 8
@@ -138,10 +139,10 @@ def pc_to_list(board, moves_first):
 
 def blind(board, m):
 	victim = board.piece_at(m.to_square)
-	victim_eval = material_table[victim.symbol()]
+	victim_eval = pmaterial_table[victim.piece_type]
 
 	me = board.piece_at(m.from_square)
-	me_eval = material_table[me.symbol()]
+	me_eval = pmaterial_table[me.piece_type]
 
 	return victim_eval < me_eval and board.attackers(not board.turn, m.to_square)
 
@@ -293,13 +294,6 @@ def search(board, alpha, beta, depth, siblings, max_depth):
 	if tt_hit and tt_hit[1][1]:
 		moves_first.append(tt_hit[1][1])
 
-# FIXME
-#	elif depth >= 5: # IID
-#		iid_result = search(board, alpha, beta, depth - 2, siblings, depth - 2)
-
-#		if iid_result[1] and iid_result[1][1]:
-#			moves_first.append(iid_result[1][1])
-
 	moves_first += siblings
 
 	moves = pc_to_list(board, moves_first)
@@ -330,12 +324,14 @@ def search(board, alpha, beta, depth, siblings, max_depth):
 			best = score
 			best_move = m
 
-			if score > alpha:
-				alpha = score
-
+			if not m in siblings:
 				if len(siblings) == 2:
 					del siblings[-1]
+
 				siblings.insert(0, m)
+
+			if score > alpha:
+				alpha = score
 
 				if score >= beta:
 					global stats_avg_bco_index, stats_avg_bco_index_cnt
@@ -456,7 +452,14 @@ def calc_move(board, max_think_time, max_depth):
 def calc_move_wrapper(board, duration, depth):
         global thread_result
 
-        thread_result = calc_move(board, duration, depth)
+	try:
+		thread_result = calc_move(board, duration, depth)
+
+        except Exception as ex:
+                l(str(ex))
+                l(traceback.format_exc())
+
+		thread_result = None
 
 def cm_thread_start(board,duration=None,depth=999999):
         global thread

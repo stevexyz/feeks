@@ -213,7 +213,7 @@ def main():
 					if line != None:
 						line = line.rstrip('\n')
 
-						if line == 'stop':
+						if line == 'stop' or line == 'quit':
 							break
 
 				result = cm_thread_stop()
@@ -235,6 +235,7 @@ def main():
 
 	except KeyboardInterrupt as ki:
 		l('ctrl+c pressed')
+		cm_thread_stop()
 
 	except Exception as ex:
 		l(str(ex))
