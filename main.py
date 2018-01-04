@@ -7,6 +7,7 @@ from board import Board
 import chess
 import chess.pgn
 import math
+import random
 from select import select
 import sys
 import time
@@ -63,16 +64,26 @@ def main():
 
 			elif parts[0] == 'auto':
 				tt = 1000
+				n_rnd = 4
 				if len(parts) == 2:
 					tt = float(parts[1])
 
 				ab = Board()
 				while True:
-					m = calc_move(ab, tt, 999999)
+					if n_rnd > 0:
+				                moves = board.get_move_list()
+						idx = random.randint(0, len(moves) - 1)
+						m = moves[idx]
+						n_rnd -= 1
+
+					else:
+						m = calc_move(ab, tt, 999999)
+						m = m[1]
+
 					if m == None:
 						break
 
-					ab.push(m[1])
+					ab.push(m)
 					print m
 
 				print 'done'
