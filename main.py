@@ -16,6 +16,8 @@ from brain import calc_move, cm_thread_start, cm_thread_check, cm_thread_stop, r
 from log import set_l, l
 
 tt_n_elements = 1024 * 8
+ponder = False
+benchmark = False
 
 def perft(board, depth):
 	if depth == 1:
@@ -60,8 +62,11 @@ def main():
 
 			elif parts[0] == 'ucinewgame':
 				board = Board()
+				cm_thread_stop()
 
 			elif parts[0] == 'auto':
+				cm_thread_stop()
+
 				tt = 1000
 				n_rnd = 4
 				if len(parts) == 2:
@@ -86,6 +91,8 @@ def main():
 				print 'done'
 
 			elif parts[0] == 'perft':
+				cm_thread_stop()
+
 				depth = 4
 				if len(parts) == 2:
 					depth = int(parts[1])
@@ -131,6 +138,8 @@ def main():
 					nr += 1
 
 			elif parts[0] == 'go':
+				cm_thread_stop()
+
 				movetime = None
 				depth = None
 				wtime = btime = None
@@ -233,6 +242,9 @@ def main():
 				else:
 					print 'bestmove a1a1'
 
+				if ponder:
+					cm_thread_start(board.copy())
+
 			elif parts[0] == 'quit':
 				break
 
@@ -240,6 +252,8 @@ def main():
 				l('unknown: %s' % parts[0])
 
 			sys.stdout.flush()
+
+		cm_thread_stop()
 
 	except KeyboardInterrupt as ki:
 		l('ctrl+c pressed')
@@ -257,6 +271,8 @@ def test():
 if len(sys.argv) == 2:
 	set_l(sys.argv[1])
 
-#import cProfile
-#cProfile.run('test()', 'restats')
-main()
+if benchmark:
+	import cProfile
+	cProfile.run('test()', 'restats')
+else:
+	main()

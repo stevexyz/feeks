@@ -105,7 +105,7 @@ def tt_get_pv(b, first_move):
 
 	while True:
 		hit = tt_lookup(board)
-		if not hit:
+		if not hit or not hit['move']:
 			break
 
 		pv += ' ' + hit['move'].uci()

@@ -113,9 +113,9 @@ def pc_to_list(board, moves_first):
 		if m.promotion:
 			score += pmaterial_table[m.promotion] << 18
 
-		victim = board.piece_at(m.to_square)
-		if victim:
-			score += pmaterial_table[victim.piece_type] << 18
+		victim_type = board.piece_type_at(m.to_square)
+		if victim_type:
+			score += pmaterial_table[victim_type] << 18
 
 
 		#	me = board.piece_at(m.from_square)
@@ -138,11 +138,11 @@ def pc_to_list(board, moves_first):
 	return sorted(out, key=itemgetter('score'), reverse = True) 
 
 def blind(board, m):
-	victim = board.piece_at(m.to_square)
-	victim_eval = pmaterial_table[victim.piece_type]
+	victim_type = board.piece_type_at(m.to_square)
+	victim_eval = pmaterial_table[victim_type]
 
-	me = board.piece_at(m.from_square)
-	me_eval = pmaterial_table[me.piece_type]
+	me_type = board.piece_type_at(m.from_square)
+	me_eval = pmaterial_table[me_type]
 
 	return victim_eval < me_eval and board.attackers(not board.turn, m.to_square)
 
@@ -186,7 +186,7 @@ def qs(board, alpha, beta):
 	for m_work in moves:
 		m = m_work['move']
 
-		is_capture_move = board.piece_at(m.to_square) != None
+		is_capture_move = board.piece_type_at(m.to_square) != None
 
 		if is_check == False and is_capture_move == False and m.promotion == None:
 			continue
