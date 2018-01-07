@@ -18,6 +18,7 @@ from log import set_l, l
 tt_n_elements = 1024 * 8
 ponder = False
 benchmark = False
+epd = False
 
 def perft(board, depth):
 	if depth == 1:
@@ -31,6 +32,11 @@ def perft(board, depth):
 		board.pop()
 
 	return total
+
+def send(str_):
+	print str_
+	l('OUT: %s' % str_)
+	sys.stdout.flush()
 
 def main():
 	try:
@@ -48,17 +54,17 @@ def main():
 			if len(line) == 0:
 				continue
 
-			l(line)
+			l('IN: %s' % line)
 
 			parts = line.split(' ')
 			
 			if parts[0] == 'uci':
-				print 'id name Feeks'
-				print 'id author Folkert van Heusden <mail@vanheusden.com>'
-				print 'uciok'
+				send('id name Feeks')
+				send('id author Folkert van Heusden <mail@vanheusden.com>')
+				send('uciok')
 
 			elif parts[0] == 'isready':
-				print 'readyok'
+				send('readyok')
 
 			elif parts[0] == 'ucinewgame':
 				board = Board()
@@ -221,6 +227,7 @@ def main():
 
 				cm_thread_start(board, current_duration, depth)
 
+				line = None
 				while cm_thread_check():
 					rlist, _, _ = select([sys.stdin], [], [], 0.01)
 					if not rlist:
@@ -235,12 +242,15 @@ def main():
 
 				result = cm_thread_stop()
 
+				if line == 'quit':
+					break
+
 				if result and result[1]:
-					print 'bestmove %s' % result[1].uci()
+					send('bestmove %s' % result[1].uci())
 					board.push(result[1])
 
 				else:
-					print 'bestmove a1a1'
+					send('bestmove a1a1')
 
 				if ponder:
 					cm_thread_start(board.copy())
@@ -263,16 +273,52 @@ def main():
 		l(str(ex))
 		l(traceback.format_exc())
 
-def test():
+def benchmark_test():
 	tt_init(tt_n_elements)
 	board = Board()
 	calc_move(board, 60.0, 999999)
+
+def epd_test(str_):
+	parts = str_.split(';')
+	board = chess.Board(parts[0])
+
+	print parts[0]
+
+	for test in parts:
+		test = test.strip()
+
+		if test[0] != 'D':
+			continue
+
+		pparts = test.split(' ')
+
+		depth = int(pparts[0][1:])
+
+		count = int(pparts[1])
+
+		verify = perft(board, depth)
+
+		print '\t', depth, verify, count,
+		if verify == count:
+			print 'ok'
+		else:
+			print 'FAIL!'
 
 if len(sys.argv) == 2:
 	set_l(sys.argv[1])
 
 if benchmark:
 	import cProfile
-	cProfile.run('test()', 'restats')
+	cProfile.run('benchmark_test()', 'restats')
+elif epd:
+	while True:
+		line = sys.stdin.readline()
+		if not line:
+			break
+
+		if len(line) == 0 or line[0] == '#':
+			continue
+
+		epd_test(line)
 else:
 	main()

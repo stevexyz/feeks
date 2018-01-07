@@ -73,7 +73,7 @@ def psq_individual(pos, piece):
 	if piece.color == chess.BLACK: 
 	    return psq_table[symbol][pos] 
 
-	return psq_table[symbol][pos ^ 0x38]
+	return psq_table[symbol][chess.square_mirror(pos)]
 
 def psq(pm):
 	global psq_table

@@ -90,6 +90,40 @@ def mobility(board):
 
         return white_n - black_n
 
+def pm_to_filemap(piece_map):
+	files = [[[0 for k in xrange(8)] for j in xrange(7)] for i in xrange(2)]
+
+	for p in piece_map:
+		piece = piece_map[p]
+
+		files[piece.color][piece.piece_type][p & 7] += 1
+
+	return files
+
+def count_double_pawns(file_map):
+	n = 0
+
+	for i in xrange(0, 8):
+		if file_map[chess.WHITE][chess.PAWN][i] >= 2:
+			n += file_map[chess.WHITE][chess.PAWN][i] - 1
+
+		if file_map[chess.BLACK][chess.PAWN][i] >= 2:
+			n -= file_map[chess.BLACK][chess.PAWN][i] - 1
+
+	return n
+
+def count_rooks_on_open_file(file_map):
+	n = 0
+
+	for i in xrange(0, 8):
+		if file_map[chess.WHITE][chess.PAWN][i] == 0 and file_map[chess.WHITE][chess.ROOK][i] > 0:
+			n += 1
+
+		if file_map[chess.BLACK][chess.PAWN][i] == 0 and file_map[chess.BLACK][chess.ROOK][i] > 0:
+			n -= 1
+
+	return n
+
 def evaluate(board):
 	pm = board.piece_map()
 
@@ -98,6 +132,12 @@ def evaluate(board):
 	score += psq(pm) / 4
 
 	score += mobility(board) * 10
+
+	pfm = pm_to_filemap(pm)
+
+	score += count_double_pawns(pfm)
+
+	score += count_rooks_on_open_file(pfm)
 
 	if board.turn:
 		return score
@@ -427,14 +467,15 @@ def calc_move(board, max_think_time, max_depth):
 	if t:
 		t.cancel()
 
-	l(board.get_move_list())
+	l('valid moves: %s' % board.get_move_list())
 
 	if result == None or result[1] == None:
 		l('random move!')
+		l(board.get_stats())
 
 		result = [ 0, random_move(board), 0, time.time() - start_ts ]
 
-	l(result)
+	l('selected move: %s' % result)
 
 	diff_ts = time.time() - start_ts
 
@@ -465,6 +506,9 @@ import random
 def random_move(board):
 	moves = board.get_move_list()
 	idx = random.randint(0, len(moves) - 1)
+	l('n moves: %d, chosen: %d = %s' % (len(moves), idx, moves[idx]))
+	if not board.is_legal(moves[idx]):
+		l('FAIL')
 	return moves[idx]
 
 thread = None

@@ -26,9 +26,9 @@ class Board(chess.Board):
 		self._moves.append(self._get_move_list())
 
 	def pop(self):
-		super(Board, self).pop()
-
 		self._moves = self._moves[:-1]
+
+		return super(Board, self).pop()
 
 	def _set_lists(self, lists):
 		self._moves = lists
@@ -40,3 +40,6 @@ class Board(chess.Board):
 		c = super(Board, self).copy()
 		c._clear()
 		return c
+
+	def get_stats(self):
+		return { 'len' : len(self._moves) }
