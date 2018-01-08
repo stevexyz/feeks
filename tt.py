@@ -103,6 +103,8 @@ def tt_get_pv(b, first_move):
 	board = b.copy()
 	board.push(first_move)
 
+        n = 0
+
 	while True:
 		hit = tt_lookup(board)
 		if not hit or not hit['move']:
@@ -111,5 +113,9 @@ def tt_get_pv(b, first_move):
 		pv += ' ' + hit['move'].uci()
 
 		board.push(hit['move'])
+
+                n += 1
+                if n >= 100: # sanity limit
+                    break
 
 	return pv

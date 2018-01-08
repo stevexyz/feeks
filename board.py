@@ -26,7 +26,7 @@ class Board(chess.Board):
 		self._moves.append(self._get_move_list())
 
 	def pop(self):
-		self._moves = self._moves[:-1]
+                del self._moves[-1]
 
 		return super(Board, self).pop()
 

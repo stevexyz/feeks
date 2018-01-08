@@ -5,6 +5,7 @@
 
 import chess
 import chess.pgn
+import collections
 from psq import psq, psq_individual
 from tt import tt_inc_age, tt_store, tt_lookup, tt_get_pv
 from log import l
@@ -59,6 +60,19 @@ def reset_stats():
 	global stats_avg_bco_index_cnt, stats_avg_bco_index, stats_node_count, stats_tt_hits, stats_tt_checks
 
 	stats_avg_bco_index_cnt = stats_avg_bco_index = stats_node_count = stats_tt_checks = stats_tt_hits = 0
+
+def verify_board(what, board):
+    m1 = board.get_move_list()
+
+    from board import Board
+    b2 = Board(board.fen())
+    m2 = b2._get_move_list()
+
+    if collections.Counter(m1) != collections.Counter(m2):
+        print 'FAIL ', title, board.fen()
+        print m1
+        print m2
+        sys.exit(1)
 
 def material(pm):
 	score = 0
@@ -140,7 +154,7 @@ def evaluate(board):
 	score += count_rooks_on_open_file(pfm)
 
 	if board.turn:
-		return score
+	    return score
 
 	return -score
 
@@ -228,10 +242,11 @@ def qs(board, alpha, beta):
 
 		is_capture_move = board.piece_type_at(m.to_square) != None
 
-		if is_check == False and is_capture_move == False and m.promotion == None:
-			continue
+                if is_check == False:
+                    if is_capture_move == False and m.promotion == None:
+                        continue
 
-		if is_capture_move and blind(board, m):
+                    if is_capture_move and blind(board, m):
 			continue
 
 		move_count += 1
@@ -241,6 +256,8 @@ def qs(board, alpha, beta):
 		score = -qs(board, -beta, -alpha)
 
 		board.pop()
+
+                #verify_board('qs %s' % m, board)
 
 		if score > best:
 			best = score
@@ -256,7 +273,7 @@ def qs(board, alpha, beta):
 
 	if move_count == 0:
 		if is_check: # stale mate
-			return 0
+		    return 0
 
 		return evaluate(board)
 
@@ -298,7 +315,7 @@ def search(board, alpha, beta, depth, siblings, max_depth, is_nm):
 		return (0, None)
 
 	if depth == 0:
-		return (qs(board, alpha, beta), None)
+	    return (qs(board, alpha, beta), None)
 
 	top_of_tree = depth == max_depth
 
@@ -359,6 +376,8 @@ def search(board, alpha, beta, depth, siblings, max_depth, is_nm):
 		score = -result[0]
 
 		board.pop()
+
+                #verify_board('search %s' % m, board)
 
 		if score > best:
 			best = score
