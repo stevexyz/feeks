@@ -93,7 +93,8 @@ def tt_lookup(board):
 
 	for i in xrange(0, tt_sub_size):
 		if tt[idx][i]['hash'] == h:
-			return tt[idx][i]
+                        if tt[idx][i]['move'] == None or tt[idx][i]['move'] in board.get_move_list():
+                            return tt[idx][i]
 
 	return None
 

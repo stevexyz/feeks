@@ -284,9 +284,6 @@ def tt_lookup_helper(board, alpha, beta, depth):
 	if not tt_hit:
 		return None
 
-	if tt_hit['move'] != None and not tt_hit['move'] in board.get_move_list():
-		return None
-
 	rc = (tt_hit['score'], tt_hit['move'])
 
 	if tt_hit['depth'] < depth:
