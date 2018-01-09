@@ -7,8 +7,10 @@ from board import Board
 import chess
 import chess.pgn
 import math
+import Queue
 from select import select
 import sys
+import threading
 import time
 import traceback
 from tt import tt_init
@@ -19,6 +21,29 @@ tt_n_elements = 1024 * 8
 ponder = False
 benchmark = False
 epd = False
+
+class stdin_reader(threading.Thread):
+    q = Queue.Queue()
+
+    def run(self):
+        l('stdin thread started')
+
+        while True:
+            line = sys.stdin.readline()
+
+            self.q.put(line)
+
+        l('stdin thread terminating')
+
+    def get(self, to = None):
+        try:
+            if not to:
+                return self.q.get()
+
+            return self.q.get(True, to)
+
+        except Queue.Empty as qe:
+            return None
 
 def perft(board, depth):
 	if depth == 1:
@@ -40,12 +65,16 @@ def send(str_):
 
 def main():
 	try:
+                sr = stdin_reader()
+                sr.daemon = True
+                sr.start()
+
 		tt_init(tt_n_elements)
 
 		board = Board()
 
 		while True:
-			line = sys.stdin.readline()
+			line = sr.get()
 			if line == None:
 				break
 
@@ -79,7 +108,7 @@ def main():
 					tt = float(parts[1])
 
 				ab = Board()
-				while True:
+				while not ab.is_checkmate():
 					if n_rnd > 0:
 						m = random_move(ab)
 						n_rnd -= 1
@@ -229,12 +258,9 @@ def main():
 
 				line = None
 				while cm_thread_check():
-					rlist, _, _ = select([sys.stdin], [], [], 0.01)
-					if not rlist:
-						continue
+					line = sr.get(0.01)
 
-					line = sys.stdin.readline()
-					if line != None:
+                                        if line:
 						line = line.rstrip('\n')
 
 						if line == 'stop' or line == 'quit':
