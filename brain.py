@@ -147,11 +147,11 @@ def evaluate(board):
 
 	score += mobility(board) * 10
 
-	pfm = pm_to_filemap(pm)
+#	pfm = pm_to_filemap(pm)
 
-	score += count_double_pawns(pfm)
+#	score += count_double_pawns(pfm)
 
-	score += count_rooks_on_open_file(pfm)
+#	score += count_rooks_on_open_file(pfm)
 
 	if board.turn:
 	    return score
@@ -404,7 +404,10 @@ def search(board, alpha, beta, depth, siblings, max_depth, is_nm):
 		l('ERR')
 
 	if alpha > alpha_orig and not to_flag.is_set():
-		tt_store(board, alpha_orig, beta, best, best_move, depth)
+		bm = None
+		if best >= alpha_orig:
+			bm = best_move
+		tt_store(board, alpha_orig, beta, best, bm, depth)
 
 	return (best, best_move)
 
