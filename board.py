@@ -4,12 +4,7 @@ class Board(chess.Board):
 	_moves = []
 
 	def _get_move_list(self):
-		out = []
-
-		for m in self.legal_moves:
-			out.append(m)
-
-		return out
+		return list(self.legal_moves)
 
 	def get_move_list(self):
 		if not self._moves:
