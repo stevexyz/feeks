@@ -329,6 +329,7 @@ def epd_test(str_):
 			print 'ok'
 		else:
 			print 'FAIL!'
+			sys.exit(1)
 
 if len(sys.argv) == 2:
 	set_l(sys.argv[1])

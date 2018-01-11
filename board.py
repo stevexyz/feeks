@@ -3,6 +3,8 @@ import chess
 class Board(chess.Board):
 	_moves = []
 
+	__slots__ = [ '_moves' ]
+
 	def _get_move_list(self):
 		return list(self.legal_moves)
 

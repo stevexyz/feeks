@@ -9,8 +9,8 @@ import collections
 from psq import psq, psq_individual
 from tt import tt_inc_age, tt_store, tt_lookup, tt_get_pv
 from log import l
-from operator import itemgetter
 import math
+import operator
 import sys
 import threading
 import time
@@ -23,23 +23,13 @@ stats_avg_bco_index_cnt = stats_avg_bco_index = 0
 infinite = 131072
 checkmate = 10000
 
-material_table = {
-	'P' : 100, 'p' : 100,
-	'N' : 325, 'n' : 325,
-	'B' : 325, 'b' : 325,
-	'R' : 500, 'r' : 500,
-	'Q' : 975, 'q' : 975,
-	'K' : 10000, 'k' : 10000
-	}
-
-pmaterial_table = {
-	chess.PAWN : 100,
-	chess.KNIGHT : 325,
-	chess.BISHOP : 325,
-	chess.ROOK : 500,
-	chess.QUEEN : 975,
-	chess.KING : 10000
-	}
+pmaterial_table = [ 0 ] * (6 + 1)
+pmaterial_table[chess.PAWN] = 100
+pmaterial_table[chess.KNIGHT] = 325
+pmaterial_table[chess.BISHOP] = 325
+pmaterial_table[chess.ROOK] = 500
+pmaterial_table[chess.QUEEN] = 975
+pmaterial_table[chess.KING] = 10000
 
 to_flag = None
 
@@ -158,18 +148,25 @@ def evaluate(board):
 
 	return -score
 
+class pc_move(object):
+	__slots__ = ['score', 'move']
+
+	def __init__(self, score, move):
+		self.score = score
+		self.move = move
+
 def pc_to_list(board, moves_first):
 	out = []
 
 	for m in board.get_move_list():
-		score = 0
+		c = pc_move(0, m)
 
 		if m.promotion:
-			score += pmaterial_table[m.promotion] << 18
+			c.score += pmaterial_table[m.promotion] << 18
 
 		victim_type = board.piece_type_at(m.to_square)
 		if victim_type:
-			score += pmaterial_table[victim_type] << 18
+			c.score += pmaterial_table[victim_type] << 18
 
 
 		#	me = board.piece_at(m.from_square)
@@ -180,16 +177,14 @@ def pc_to_list(board, moves_first):
 		#	me = board.piece_at(m.from_square)
 		#	score += psq_individual(m.to_square, me) - psq_individual(m.from_square, me)
 
-		record = { 'score' : score, 'move' : m }
-
-		out.append(record)
+		out.append(c)
 
 	for i in xrange(0, len(moves_first)):
 		for m in out:
-			if m['move'] == moves_first[i]:
-				m['score'] = infinite - i
+			if m.move == moves_first[i]:
+				m.score = infinite - i
 
-	return sorted(out, key=itemgetter('score'), reverse = True) 
+	return sorted(out, key=operator.attrgetter('score'), reverse = True)
 
 def blind(board, m):
 	victim_type = board.piece_type_at(m.to_square)
@@ -238,7 +233,7 @@ def qs(board, alpha, beta):
 
 	move_count = 0
 	for m_work in moves:
-		m = m_work['move']
+		m = m_work.move
 
 		is_capture_move = board.piece_type_at(m.to_square) != None
 
@@ -284,18 +279,18 @@ def tt_lookup_helper(board, alpha, beta, depth):
 	if not tt_hit:
 		return None
 
-	rc = (tt_hit['score'], tt_hit['move'])
+	rc = (tt_hit.score, tt_hit.move)
 
-	if tt_hit['depth'] < depth:
+	if tt_hit.depth < depth:
 		return [ False, rc ]
 
-	if tt_hit['flags'] == 'E':
+	if tt_hit.flags == 'E':
 		return [ True, rc ]
 
-	if tt_hit['flags'] == 'L' and tt_hit['score'] >= beta:
+	if tt_hit.flags == 'L' and tt_hit.score >= beta:
 		return [ True, rc ]
 
-	if tt_hit['flags'] == 'U' and tt_hit['score'] <= alpha:
+	if tt_hit.flags == 'U' and tt_hit.score <= alpha:
 		return [ True, rc ]
 
 	return [ False, rc ]
@@ -356,7 +351,7 @@ def search(board, alpha, beta, depth, siblings, max_depth, is_nm):
 
 	move_count = 0
 	for m_work in moves:
-		m = m_work['move']
+		m = m_work.move
 		move_count += 1
 
 		new_depth = depth - 1

@@ -11,6 +11,17 @@ tt_size = 0
 tt_sub_size = 8
 tt_age = 0
 
+class tt_element(object):
+	__slots__ = [ 'hash_', 'score', 'flags', 'depth', 'age', 'move' ]
+
+	def __init__(self, hash_, score, flags, depth, age, move):
+		self.hash_ = hash_
+		self.score = score
+		self.flags = flags
+		self.depth = depth
+		self.age = age
+		self.move = move
+
 def tt_init(size):
 	global tt_size, tt_sub_size, tt
 
@@ -19,10 +30,7 @@ def tt_init(size):
 
 	dummy_move = chess.Move(0, 0)
 
-	initial_entry = dict({ 'hash' : None, 'age' : -1, 'score' : None, 'flags': None, 'depth': -1, 'move': dummy_move })
-	temp = [initial_entry.copy() for i in xrange(tt_sub_size)]
-
-	tt = [copy.deepcopy(temp) for i in xrange(tt_size)]
+	tt = [[tt_element(None, None, None, -1, -1, None) for i in xrange(tt_sub_size)] for i in xrange(tt_size)]
 
 def tt_inc_age():
 	global tt_age
@@ -46,14 +54,6 @@ def tt_store(board, alpha, beta, score, move, depth):
 	else:
 		flags = 'E'
 
-	record = { 'hash' : h,
-		'score' : score,
-		'flags' : flags,
-		'depth' : depth,
-		'age' : tt_age,
-		'move' : move
-		}
-
 	idx = tt_calc_slot(h)
 
 	use_ss = None
@@ -62,27 +62,26 @@ def tt_store(board, alpha, beta, score, move, depth):
 	min_depth = 99999
 
 	for i in xrange(0, tt_sub_size):
-		if tt[idx][i]['hash'] == h:
-			if tt[idx][i]['depth'] > depth:
+		if tt[idx][i].hash_ == h:
+			if tt[idx][i].depth > depth:
 				return
 
-			if flags != 'E' and tt[idx][i]['depth'] == depth:
+			if flags != 'E' and tt[idx][i].depth == depth:
 				return
 
-			tt[idx][i] = record
-
-			return
-
-		if tt[idx][i]['age'] != tt_age:
 			use_ss = i
-		elif tt[idx][i]['depth'] < min_depth:
-			min_depth = tt[idx][i]['depth']
+			break
+
+		if tt[idx][i].age != tt_age:
+			use_ss = i
+		elif tt[idx][i].depth < min_depth:
+			min_depth = tt[idx][i].depth
 			use_ss2 = i
 
-	if use_ss:
-		tt[idx][use_ss] = record
-	else:
-		tt[idx][use_ss2] = record
+	if not use_ss:
+		use_ss = use_ss2
+
+	tt[idx][use_ss] = tt_element(h, score, flags, depth, tt_age, move)
 
 def tt_lookup(board):
 	global tt_sub_size, tt
@@ -92,8 +91,8 @@ def tt_lookup(board):
 	idx = tt_calc_slot(h)
 
 	for i in xrange(0, tt_sub_size):
-		if tt[idx][i]['hash'] == h:
-                        if tt[idx][i]['move'] == None or tt[idx][i]['move'] in board.get_move_list():
+		if tt[idx][i].hash_ == h:
+                        if tt[idx][i].move == None or tt[idx][i].move in board.get_move_list():
                             return tt[idx][i]
 
 	return None
@@ -108,12 +107,12 @@ def tt_get_pv(b, first_move):
 
 	while True:
 		hit = tt_lookup(board)
-		if not hit or not hit['move']:
+		if not hit or not hit.move:
 			break
 
-		pv += ' ' + hit['move'].uci()
+		pv += ' ' + hit.move.uci()
 
-		board.push(hit['move'])
+		board.push(hit.move)
 
                 n += 1
                 if n >= 100: # sanity limit
