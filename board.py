@@ -1,45 +1,42 @@
 import chess
 
-class Board(chess.Board):
-	_moves = []
+class Board(chess.Board, object):
+    _moves = []
 
-	def _get_move_list(self):
-		out = []
+    __slots__ = [ '_moves' ]
 
-		for m in self.legal_moves:
-			out.append(m)
+    def _get_move_list(self):
+        return list(self.legal_moves)
 
-		return out
+    def get_move_list(self):
+        if not self._moves:
+            self._moves.append(self._get_move_list())
 
-	def get_move_list(self):
-		if not self._moves:
-			self._moves.append(self._get_move_list())
+        return self._moves[-1]
 
-		return self._moves[-1]
+    def move_count(self):
+        return len(self.get_move_list())
 
-	def move_count(self):
-		return len(self.get_move_list())
+    def push(self, m):
+        super(Board, self).push(m)
 
-	def push(self, m):
-		super(Board, self).push(m)
+        self._moves.append(self._get_move_list())
 
-		self._moves.append(self._get_move_list())
+    def pop(self):
+        del self._moves[-1]
 
-	def pop(self):
-                del self._moves[-1]
+        return super(Board, self).pop()
 
-		return super(Board, self).pop()
+    def _set_lists(self, lists):
+        self._moves = lists
 
-	def _set_lists(self, lists):
-		self._moves = lists
+    def _clear(self):
+        self._moves = []
 
-	def _clear(self):
-		self._moves = []
+    def copy(self):
+        c = super(Board, self).copy()
+        c._clear()
+        return c
 
-	def copy(self):
-		c = super(Board, self).copy()
-		c._clear()
-		return c
-
-	def get_stats(self):
-		return { 'len' : len(self._moves) }
+    def get_stats(self):
+        return { 'len' : len(self._moves) }

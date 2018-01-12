@@ -7,8 +7,10 @@ from board import Board
 import chess
 import chess.pgn
 import math
+import Queue
 from select import select
 import sys
+import threading
 import time
 import traceback
 from tt import tt_init
@@ -20,305 +22,332 @@ ponder = False
 benchmark = False
 epd = False
 
+class stdin_reader(threading.Thread, object):
+    __slots__ = [ 'q' ]
+
+    q = Queue.Queue()
+
+    def run(self):
+        l('stdin thread started')
+
+        while True:
+            line = sys.stdin.readline()
+
+            self.q.put(line)
+
+        l('stdin thread terminating')
+
+    def get(self, to = None):
+        try:
+            if not to:
+                return self.q.get()
+
+            return self.q.get(True, to)
+
+        except Queue.Empty as qe:
+            return None
+
 def perft(board, depth):
-	if depth == 1:
-		return board.legal_moves.count()
+    if depth == 1:
+        return board.legal_moves.count()
 
-	total = 0
+    total = 0
 
-	for m in board.legal_moves:
-		board.push(m)
-		total += perft(board, depth - 1)
-		board.pop()
+    for m in board.legal_moves:
+        board.push(m)
+        total += perft(board, depth - 1)
+        board.pop()
 
-	return total
+    return total
 
 def send(str_):
-	print str_
-	l('OUT: %s' % str_)
-	sys.stdout.flush()
+    print str_
+    l('OUT: %s' % str_)
+    sys.stdout.flush()
 
 def main():
-	try:
-		tt_init(tt_n_elements)
+    try:
+        sr = stdin_reader()
+        sr.daemon = True
+        sr.start()
 
-		board = Board()
+        tt_init(tt_n_elements)
 
-		while True:
-			line = sys.stdin.readline()
-			if line == None:
-				break
+        board = Board()
 
-			line = line.rstrip('\n')
+        while True:
+            line = sr.get()
+            if line == None:
+                break
 
-			if len(line) == 0:
-				continue
+            line = line.rstrip('\n')
 
-			l('IN: %s' % line)
+            if len(line) == 0:
+                continue
 
-			parts = line.split(' ')
-			
-			if parts[0] == 'uci':
-				send('id name Feeks')
-				send('id author Folkert van Heusden <mail@vanheusden.com>')
-				send('uciok')
+            l('IN: %s' % line)
 
-			elif parts[0] == 'isready':
-				send('readyok')
+            parts = line.split(' ')
+            
+            if parts[0] == 'uci':
+                send('id name Feeks')
+                send('id author Folkert van Heusden <mail@vanheusden.com>')
+                send('uciok')
 
-			elif parts[0] == 'ucinewgame':
-				board = Board()
-				cm_thread_stop()
+            elif parts[0] == 'isready':
+                send('readyok')
 
-			elif parts[0] == 'auto':
-				cm_thread_stop()
+            elif parts[0] == 'ucinewgame':
+                board = Board()
+                cm_thread_stop()
 
-				tt = 1000
-				n_rnd = 4
-				if len(parts) == 2:
-					tt = float(parts[1])
+            elif parts[0] == 'auto':
+                cm_thread_stop()
 
-				ab = Board()
-				while True:
-					if n_rnd > 0:
-						m = random_move(ab)
-						n_rnd -= 1
+                tt = 1000
+                n_rnd = 4
+                if len(parts) == 2:
+                    tt = float(parts[1])
 
-					else:
-						m = calc_move(ab, tt, 999999)
-						m = m[1]
+                ab = Board()
+                while not ab.is_checkmate():
+                    if n_rnd > 0:
+                        m = random_move(ab)
+                        n_rnd -= 1
 
-					if m == None:
-						break
+                    else:
+                        m = calc_move(ab, tt, 999999)
+                        m = m[1]
 
-					ab.push(m)
-					print m
+                    if m == None:
+                        break
 
-				print 'done'
+                    ab.push(m)
+                    print m
 
-			elif parts[0] == 'perft':
-				cm_thread_stop()
+                print 'done'
 
-				depth = 4
-				if len(parts) == 2:
-					depth = int(parts[1])
+            elif parts[0] == 'perft':
+                cm_thread_stop()
 
-				start = time.time()
-				total = 0
+                depth = 4
+                if len(parts) == 2:
+                    depth = int(parts[1])
 
-				for m in board.legal_moves:
-					board.push(m)
-					cnt = perft(board, depth - 1)
-					board.pop()
+                start = time.time()
+                total = 0
 
-					print '%s: %d' % (m.uci(), cnt)
+                for m in board.legal_moves:
+                    board.push(m)
+                    cnt = perft(board, depth - 1)
+                    board.pop()
 
-					total += cnt
+                    print '%s: %d' % (m.uci(), cnt)
 
-				print '==========================='
-				took = time.time() - start
-				print 'Total time (ms) : %d' % math.ceil(took * 1000.0)
-				print 'Nodes searched  : %d' % total
-				print 'Nodes/second    : %d' % math.floor(total / took)
+                    total += cnt
 
-			elif parts[0] == 'position':
-				is_moves = False
-				nr = 1
-				while nr < len(parts):
-					if is_moves:
-						board.push_uci(parts[nr])
+                print '==========================='
+                took = time.time() - start
+                print 'Total time (ms) : %d' % math.ceil(took * 1000.0)
+                print 'Nodes searched  : %d' % total
+                print 'Nodes/second    : %d' % math.floor(total / took)
 
-					elif parts[nr] ==  'fen':
-						board = Board(' '.join(parts[nr + 1:]))
-						break
+            elif parts[0] == 'position':
+                is_moves = False
+                nr = 1
+                while nr < len(parts):
+                    if is_moves:
+                        board.push_uci(parts[nr])
 
-					elif parts[nr] == 'startpos':
-						board = Board()
+                    elif parts[nr] ==  'fen':
+                        board = Board(' '.join(parts[nr + 1:]))
+                        break
 
-					elif parts[nr] == 'moves':
-						is_moves = True
+                    elif parts[nr] == 'startpos':
+                        board = Board()
 
-					else:
-						l('unknown: %s' % parts[nr])
+                    elif parts[nr] == 'moves':
+                        is_moves = True
 
-					nr += 1
+                    else:
+                        l('unknown: %s' % parts[nr])
 
-			elif parts[0] == 'go':
-				cm_thread_stop()
+                    nr += 1
 
-				movetime = None
-				depth = None
-				wtime = btime = None
-				winc = binc = 0
-				movestogo = None
+            elif parts[0] == 'go':
+                cm_thread_stop()
 
-				nr = 1
-				while nr < len(parts):
-					if parts[nr] == 'wtime':
-						wtime = int(parts[nr + 1])
-						nr += 1
+                movetime = None
+                depth = None
+                wtime = btime = None
+                winc = binc = 0
+                movestogo = None
 
-					elif parts[nr] == 'btime':
-						btime = int(parts[nr + 1])
-						nr += 1
+                nr = 1
+                while nr < len(parts):
+                    if parts[nr] == 'wtime':
+                        wtime = int(parts[nr + 1])
+                        nr += 1
 
-					elif parts[nr] == 'winc':
-						winc = int(parts[nr + 1])
-						nr += 1
+                    elif parts[nr] == 'btime':
+                        btime = int(parts[nr + 1])
+                        nr += 1
 
-					elif parts[nr] == 'binc':
-						binc = int(parts[nr + 1])
-						nr += 1
+                    elif parts[nr] == 'winc':
+                        winc = int(parts[nr + 1])
+                        nr += 1
 
-					elif parts[nr] == 'movetime':
-						movetime = int(parts[nr + 1])
-						nr += 1
+                    elif parts[nr] == 'binc':
+                        binc = int(parts[nr + 1])
+                        nr += 1
 
-					elif parts[nr] == 'movestogo':
-						movestogo = int(parts[nr + 1])
-						nr += 1
+                    elif parts[nr] == 'movetime':
+                        movetime = int(parts[nr + 1])
+                        nr += 1
 
-					elif parts[nr] == 'depth':
-						depth = int(parts[nr + 1])
-						nr += 1
+                    elif parts[nr] == 'movestogo':
+                        movestogo = int(parts[nr + 1])
+                        nr += 1
 
-					else:
-						l('unknown: %s' % parts[nr])
+                    elif parts[nr] == 'depth':
+                        depth = int(parts[nr + 1])
+                        nr += 1
 
-					nr += 1
+                    else:
+                        l('unknown: %s' % parts[nr])
 
-		###
-				current_duration = movetime
+                    nr += 1
 
-				if current_duration:
-					current_duration = float(current_duration) / 1000.0
+###
+                current_duration = movetime
 
-				elif wtime and btime:
-					ms = wtime
-					time_inc = winc
-					if not board.turn:
-						ms = btime
-						time_inc = binc
+                if current_duration:
+                    current_duration = float(current_duration) / 1000.0
 
-					ms /= 1000.0
-					time_inc /= 1000.0
+                elif wtime and btime:
+                    ms = wtime
+                    time_inc = winc
+                    if not board.turn:
+                        ms = btime
+                        time_inc = binc
 
-					if movestogo == None:
-						movestogo = 40 - board.fullmove_number
-						while movestogo < 0:
-							movestogo += 40
+                    ms /= 1000.0
+                    time_inc /= 1000.0
 
-					current_duration = (ms + movestogo * time_inc) / (board.fullmove_number + 7);
+                    if movestogo == None:
+                        movestogo = 40 - board.fullmove_number
+                        while movestogo < 0:
+                            movestogo += 40
 
-					limit_duration = ms / 15.0
-					if current_duration > limit_duration:
-						current_duration = limit_duration
+                    current_duration = (ms + movestogo * time_inc) / (board.fullmove_number + 7);
 
-					if current_duration == 0:
-						current_duration = 0.001
+                    limit_duration = ms / 15.0
+                    if current_duration > limit_duration:
+                        current_duration = limit_duration
 
-					l('mtg %d, ms %f, ti %f' % (movestogo, ms, time_inc))
-		###
-				if current_duration:
-					l('search for %f seconds' % current_duration)
+                    if current_duration == 0:
+                        current_duration = 0.001
 
-				if depth == None:
-					depth = 999
+                    l('mtg %d, ms %f, ti %f' % (movestogo, ms, time_inc))
+###
+                if current_duration:
+                    l('search for %f seconds' % current_duration)
 
-				cm_thread_start(board, current_duration, depth)
+                if depth == None:
+                    depth = 999
 
-				line = None
-				while cm_thread_check():
-					rlist, _, _ = select([sys.stdin], [], [], 0.01)
-					if not rlist:
-						continue
+                cm_thread_start(board, current_duration, depth)
 
-					line = sys.stdin.readline()
-					if line != None:
-						line = line.rstrip('\n')
+                line = None
+                while cm_thread_check():
+                    line = sr.get(0.01)
 
-						if line == 'stop' or line == 'quit':
-							break
+                    if line:
+                        line = line.rstrip('\n')
 
-				result = cm_thread_stop()
+                        if line == 'stop' or line == 'quit':
+                            break
 
-				if line == 'quit':
-					break
+                result = cm_thread_stop()
 
-				if result and result[1]:
-					send('bestmove %s' % result[1].uci())
-					board.push(result[1])
+                if line == 'quit':
+                    break
 
-				else:
-					send('bestmove a1a1')
+                if result and result[1]:
+                    send('bestmove %s' % result[1].uci())
+                    board.push(result[1])
 
-				if ponder:
-					cm_thread_start(board.copy())
+                else:
+                    send('bestmove a1a1')
 
-			elif parts[0] == 'quit':
-				break
+                if ponder:
+                    cm_thread_start(board.copy())
 
-			else:
-				l('unknown: %s' % parts[0])
+            elif parts[0] == 'quit':
+                break
 
-			sys.stdout.flush()
+            else:
+                l('unknown: %s' % parts[0])
 
-		cm_thread_stop()
+            sys.stdout.flush()
 
-	except KeyboardInterrupt as ki:
-		l('ctrl+c pressed')
-		cm_thread_stop()
+        cm_thread_stop()
 
-	except Exception as ex:
-		l(str(ex))
-		l(traceback.format_exc())
+    except KeyboardInterrupt as ki:
+        l('ctrl+c pressed')
+        cm_thread_stop()
+
+    except Exception as ex:
+        l(str(ex))
+        l(traceback.format_exc())
 
 def benchmark_test():
-	tt_init(tt_n_elements)
-	board = Board()
-	calc_move(board, 60.0, 999999)
+    tt_init(tt_n_elements)
+    board = Board()
+    calc_move(board, 60.0, 999999)
 
 def epd_test(str_):
-	parts = str_.split(';')
-	board = chess.Board(parts[0])
+    parts = str_.split(';')
+    board = chess.Board(parts[0])
 
-	print parts[0]
+    print parts[0]
 
-	for test in parts:
-		test = test.strip()
+    for test in parts:
+        test = test.strip()
 
-		if test[0] != 'D':
-			continue
+        if test[0] != 'D':
+            continue
 
-		pparts = test.split(' ')
+        pparts = test.split(' ')
 
-		depth = int(pparts[0][1:])
+        depth = int(pparts[0][1:])
 
-		count = int(pparts[1])
+        count = int(pparts[1])
 
-		verify = perft(board, depth)
+        verify = perft(board, depth)
 
-		print '\t', depth, verify, count,
-		if verify == count:
-			print 'ok'
-		else:
-			print 'FAIL!'
+        print '\t', depth, verify, count,
+        if verify == count:
+            print 'ok'
+        else:
+            print 'FAIL!'
+            sys.exit(1)
 
 if len(sys.argv) == 2:
-	set_l(sys.argv[1])
+    set_l(sys.argv[1])
 
 if benchmark:
-	import cProfile
-	cProfile.run('benchmark_test()', 'restats')
+    import cProfile
+    cProfile.run('benchmark_test()', 'restats')
 elif epd:
-	while True:
-		line = sys.stdin.readline()
-		if not line:
-			break
+    while True:
+        line = sys.stdin.readline()
+        if not line:
+            break
 
-		if len(line) == 0 or line[0] == '#':
-			continue
+        if len(line) == 0 or line[0] == '#':
+            continue
 
-		epd_test(line)
+        epd_test(line)
 else:
-	main()
+    main()
