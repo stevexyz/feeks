@@ -396,7 +396,7 @@ def search(board, alpha, beta, depth, siblings, max_depth, is_nm):
         new_depth = depth - 1
 
         lmr = False
-        if allow_lmr and move_count >= 4:
+        if allow_lmr and move_count >= 4 and not board.is_capture(m) and not m.promotion:
             lmr = True
             new_depth -= 1
 
