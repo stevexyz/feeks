@@ -55,19 +55,19 @@ def reset_stats():
 def material(pm):
     return sum((1 if pm[p].color else -1) * pmaterial_table[pm[p].piece_type] for p in pm)
 
-def mobility(board):
+def mobility(board, hash_):
     if board.turn:
-        white_n = board.move_count()
+        white_n = board.move_count(hash_)
 
         board.push(chess.Move.null())
-        black_n = board.move_count()
+        black_n = board.move_count(chess.polyglot.zobrist_hash(board))
         board.pop()
 
     else:
-        black_n = board.move_count()
+        black_n = board.move_count(hash_)
 
         board.push(chess.Move.null())
-        white_n = board.move_count()
+        white_n = board.move_count(chess.polyglot.zobrist_hash(board))
         board.pop()
 
     return white_n - black_n
@@ -106,14 +106,65 @@ def count_rooks_on_open_file(file_map):
 
     return n
 
-def evaluate(board):
+def passed_pawn(pm, is_end_game):
+    whiteYmax = [ -1 ] * 8
+    blackYmin = [ 8 ] * 8
+
+    for P in pm:
+        p = pm[P]
+
+        if p.piece_type != chess.PAWN:
+            continue
+
+        x = P & 7
+        y = P >> 3
+
+        if p.color == chess.WHITE:
+            whiteYmax[x] = max(whiteYmax[x], y)
+        else:
+            blackYmin[x] = min(blackYmin[x], y)
+
+    scores = [ [ 0, 5, 20, 30, 40, 50, 80, 0 ], [ 0, 5, 20, 40, 70, 120, 200, 0 ] ]
+
+    score = 0
+
+    for P in pm:
+        p = pm[P]
+
+        if p.piece_type != chess.PAWN:
+            continue
+
+        x = P & 7
+        y = P >> 3
+
+        if p.color == chess.WHITE:
+            left = (x > 0 and (blackYmin[x - 1] <= y or blackYmin[x - 1] == 8)) or x == 0;
+            front = blackYmin[x] < y or blackYmin[x] == 8;
+            right = (x < 7 and (blackYmin[x + 1] <= y or blackYmin[x + 1] == 8)) or x == 7;
+
+            if left and front and right:
+                score += scores[is_end_game][y];
+
+        else:
+            left = (x > 0 and (whiteYmax[x - 1] >= y or whiteYmax[x - 1] == -1)) or x == 0;
+            front = whiteYmax[x] > y or whiteYmax[x] == -1;
+            right = (x < 7 and (whiteYmax[x + 1] >= y or whiteYmax[x + 1] == -1)) or x == 7;
+
+            if left and front and right:
+                score -= scores[is_end_game][7 - y];
+
+    return score
+
+def evaluate(board, hash_):
     pm = board.piece_map()
 
     score = material(pm)
 
     score += psq(pm) / 4
 
-    score += mobility(board) * 10
+    score += mobility(board, hash_) * 10
+
+    score += passed_pawn(pm, False) # FIXME
 
 #   pfm = pm_to_filemap(pm)
 
@@ -139,10 +190,10 @@ def victim_type_for_move(board, m):
 
     return board.piece_type_at(m.to_square)
 
-def pc_to_list(board, moves_first):
+def pc_to_list(board, moves_first, hash_):
     out = []
 
-    for m in board.get_move_list():
+    for m in board.get_move_list(hash_):
         c = pc_move(0, m)
 
         if m.promotion:
@@ -153,9 +204,6 @@ def pc_to_list(board, moves_first):
 
             c.score += pmaterial_table[victim_type] << 18
 
-
-        #	me = board.piece_at(m.from_square)
-        #	score += (material_table['Q'] - material_table[me.symbol()]) << 8
 
         # -20 elo: 
         #else:
@@ -169,7 +217,9 @@ def pc_to_list(board, moves_first):
             if m.move == moves_first[i]:
                 m.score = infinite - i
 
-    return sorted(out, key=operator.attrgetter('score'), reverse = True)
+    out.sort(key = operator.attrgetter('score'), reverse = True)
+
+    return out
 
 def blind(board, m):
     victim_type = victim_type_for_move(board, m)
@@ -203,11 +253,13 @@ def qs(board, alpha, beta):
     if is_draw(board):
         return 0
 
+    hash_ = chess.polyglot.zobrist_hash(board)
+
     best = -infinite
 
     is_check = board.is_check()
     if not is_check:
-        best = evaluate(board)
+        best = evaluate(board, hash_)
 
         if best > alpha:
             alpha = best
@@ -215,7 +267,7 @@ def qs(board, alpha, beta):
             if best >= beta:
                 return best
 
-    moves = pc_to_list(board, [])
+    moves = pc_to_list(board, [], hash_)
 
     move_count = 0
     for m_work in moves:
@@ -254,12 +306,12 @@ def qs(board, alpha, beta):
         if is_check: # stale mate
             return 0
 
-        return evaluate(board)
+        return evaluate(board, hash_)
 
     return best
 
-def tt_lookup_helper(board, alpha, beta, depth, h):
-    tt_hit = tt_lookup(board, h)
+def tt_lookup_helper(board, alpha, beta, depth, hash_):
+    tt_hit = tt_lookup(board, hash_)
     if not tt_hit:
         return None
 
@@ -293,6 +345,8 @@ def search(board, alpha, beta, depth, siblings, max_depth, is_nm):
     if depth == 0:
         return (qs(board, alpha, beta), None)
 
+    hash_ = chess.polyglot.zobrist_hash(board)
+
     top_of_tree = depth == max_depth
 
     global stats_node_count
@@ -302,7 +356,7 @@ def search(board, alpha, beta, depth, siblings, max_depth, is_nm):
 
     global stats_tt_checks
     stats_tt_checks += 1
-    tt_hit = tt_lookup_helper(board, alpha, beta, depth, h)
+    tt_hit = tt_lookup_helper(board, alpha, beta, depth, hash_)
     if tt_hit:
         global stats_tt_hits
         stats_tt_hits += 1
@@ -331,9 +385,12 @@ def search(board, alpha, beta, depth, siblings, max_depth, is_nm):
 
     moves_first += siblings
 
-    moves = pc_to_list(board, moves_first)
+    moves = pc_to_list(board, moves_first, hash_)
 
     new_siblings = []
+
+    is_check = board.is_check()
+    allow_lmr = depth >= 3 and not is_check
 
     move_count = 0
     for m_work in moves:
@@ -342,7 +399,9 @@ def search(board, alpha, beta, depth, siblings, max_depth, is_nm):
 
         new_depth = depth - 1
 
-        if depth >= 3 and move_count >= 4:
+        lmr = False
+        if allow_lmr and move_count >= 4:
+            lmr = True
             new_depth -= 1
 
             if move_count >= 6:
@@ -352,6 +411,10 @@ def search(board, alpha, beta, depth, siblings, max_depth, is_nm):
 
         result = search(board, -beta, -alpha, new_depth, new_siblings, max_depth, False)
         score = -result[0]
+
+        if score > alpha and lmr:
+            result = search(board, -beta, -alpha, depth - 1, new_siblings, max_depth, False)
+            score = -result[0]
 
         board.pop()
 
@@ -375,8 +438,6 @@ def search(board, alpha, beta, depth, siblings, max_depth, is_nm):
                     break
 
     if move_count == 0:
-        is_check = board.is_check()
-
         if not is_check:
             return (0, None)
 
@@ -387,7 +448,7 @@ def search(board, alpha, beta, depth, siblings, max_depth, is_nm):
         if best >= alpha_orig:
             bm = best_move
 
-        tt_store(board, alpha_orig, beta, best, bm, depth, h)
+        tt_store(board, alpha_orig, beta, best, bm, depth, hash_)
 
     return (best, best_move)
 
@@ -406,10 +467,11 @@ def calc_move(board, max_think_time, max_depth):
 
     l(board.fen())
 
-    if board.move_count() == 1:
+    h = chess.polyglot.zobrist_hash(board)
+    if board.move_count(h) == 1:
         l('only 1 move possible')
 
-        for m in board.get_move_list():
+        for m in board.get_move_list(h):
             break
 
         return [ 0, m, 0, 0.0 ]
@@ -466,13 +528,13 @@ def calc_move(board, max_think_time, max_depth):
     if t:
         t.cancel()
 
-    l('valid moves: %s' % board.get_move_list())
+    l('valid moves: %s' % board.get_move_list(h))
 
     if result == None or result[1] == None:
         l('random move!')
         l(board.get_stats())
 
-        result = [ 0, random_move(board), 0, time.time() - start_ts ]
+        result = [ 0, random_move(board, h), 0, time.time() - start_ts ]
 
     l('selected move: %s' % result)
 
@@ -486,6 +548,8 @@ def calc_move(board, max_think_time, max_depth):
 
     if stats['stats_tt_checks'] and diff_ts > 0:
         l('nps: %f, nodes: %d, tt_hits: %f%%, avg bco index: %.2f' % (stats['stats_node_count'] / diff_ts, stats['stats_node_count'], stats['stats_tt_hits'] * 100.0 / stats['stats_tt_checks'], avg_bco))
+
+    l('board: %s' % board.get_stats())
 
     return result
 
@@ -502,8 +566,8 @@ def calc_move_wrapper(board, duration, depth):
         thread_result = None
 
 import random
-def random_move(board):
-    moves = board.get_move_list()
+def random_move(board, h):
+    moves = board.get_move_list(h)
     idx = random.randint(0, len(moves) - 1)
 
     l('n moves: %d, chosen: %d = %s' % (len(moves), idx, moves[idx]))

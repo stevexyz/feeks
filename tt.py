@@ -88,16 +88,16 @@ def tt_lookup(board, h):
 
     for i in xrange(0, tt_sub_size):
         if tt[idx][i].hash_ == h:
-            if tt[idx][i].move == None or tt[idx][i].move in board.get_move_list():
+            if tt[idx][i].move == None or tt[idx][i].move in board.get_move_list(h):
                 return tt[idx][i]
 
     return None
 
-def tt_get_pv(b, first_move):
+def tt_get_pv(board, first_move):
     pv = first_move.uci()
 
-    board = b.copy()
     board.push(first_move)
+    n = 1
 
     hist = set()
 
@@ -115,5 +115,10 @@ def tt_get_pv(b, first_move):
 
         board.push(hit.move)
         hist.add(hit.move)
+
+        n += 1
+
+    for r in xrange(0, n):
+        board.pop()
 
     return pv

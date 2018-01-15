@@ -3,7 +3,7 @@
 # (C) 2017 by folkert@vanheusden.com
 # released under AGPL v3.0
 
-from board import Board
+from board import Board, init_board_ht
 import chess
 import chess.pgn
 import math
@@ -112,7 +112,8 @@ def main():
                 ab = Board()
                 while not ab.is_checkmate():
                     if n_rnd > 0:
-                        m = random_move(ab)
+                        h = chess.polyglot.zobrist_hash(ab)
+                        m = random_move(ab, h)
                         n_rnd -= 1
 
                     else:
@@ -335,6 +336,8 @@ def epd_test(str_):
 
 if len(sys.argv) == 2:
     set_l(sys.argv[1])
+
+init_board_ht()
 
 if benchmark:
     import cProfile

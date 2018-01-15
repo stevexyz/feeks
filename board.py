@@ -1,42 +1,52 @@
 import chess
+import copy
+
+ht = []
+ht_size = 1024
+ht_sub_size = 8
+q_hit = q_miss = 0
+
+def init_board_ht():
+    global ht, ht_size, ht_sub_size
+
+    ht = [[[None, None] for i in xrange(ht_sub_size)] for i in xrange(ht_size)]
 
 class Board(chess.Board, object):
-    _moves = []
+	_moves = []
 
-    __slots__ = [ '_moves' ]
+        __slots__ = [ '_moves' ]
 
-    def _get_move_list(self):
-        return list(self.legal_moves)
+	def _get_move_list(self, h):
+                global ht, ht_size, ht_sub_size
+                global q_hit, q_miss
 
-    def get_move_list(self):
-        if not self._moves:
-            self._moves.append(self._get_move_list())
+		idx = h % ht_size
 
-        return self._moves[-1]
+                for i in xrange(0, ht_sub_size):
+                    if ht[idx][i][0] == h:
+                            q_hit += 1
 
-    def move_count(self):
-        return len(self.get_move_list())
+                            temp = ht[idx][i]
+                            del ht[idx][i]
+                            ht[idx].insert(0, temp)
 
-    def push(self, m):
-        super(Board, self).push(m)
+                            return temp[1]
 
-        self._moves.append(self._get_move_list())
+                q_miss += 1
 
-    def pop(self):
-        del self._moves[-1]
+		out = list(self.legal_moves)
 
-        return super(Board, self).pop()
+                del ht[idx][-1]
+                ht[idx].insert(0, [ h, out ])
 
-    def _set_lists(self, lists):
-        self._moves = lists
+		return out
 
-    def _clear(self):
-        self._moves = []
+	def get_move_list(self, h):
+		return self._get_move_list(h)
 
-    def copy(self):
-        c = super(Board, self).copy()
-        c._clear()
-        return c
+	def move_count(self, h):
+		return len(self._get_move_list(h))
 
-    def get_stats(self):
-        return { 'len' : len(self._moves) }
+        def get_stats(self):
+                global q_hit, q_miss
+                return { 'hit' : q_hit * 100.0 / (q_hit + q_miss) }
