@@ -106,6 +106,55 @@ def count_rooks_on_open_file(file_map):
 
     return n
 
+def passed_pawn(pm, is_end_game):
+    whiteYmax = [ -1 ] * 8
+    blackYmin = [ 8 ] * 8
+
+    for P in pm:
+        p = pm[P]
+
+        if p.piece_type != chess.PAWN:
+            continue
+
+        x = P & 7
+        y = P >> 3
+
+        if p.color == chess.WHITE:
+            whiteYmax[x] = max(whiteYmax[x], y)
+        else:
+            blackYmin[x] = min(blackYmin[x], y)
+
+    scores = [ [ 0, 5, 20, 30, 40, 50, 80, 0 ], [ 0, 5, 20, 40, 70, 120, 200, 0 ] ]
+
+    score = 0
+
+    for P in pm:
+        p = pm[P]
+
+        if p.piece_type != chess.PAWN:
+            continue
+
+        x = P & 7
+        y = P >> 3
+
+        if p.color == chess.WHITE:
+            left = (x > 0 and (blackYmin[x - 1] <= y or blackYmin[x - 1] == 8)) or x == 0;
+            front = blackYmin[x] < y or blackYmin[x] == 8;
+            right = (x < 7 and (blackYmin[x + 1] <= y or blackYmin[x + 1] == 8)) or x == 7;
+
+            if left and front and right:
+                score += scores[is_end_game][y];
+
+        else:
+            left = (x > 0 and (whiteYmax[x - 1] >= y or whiteYmax[x - 1] == -1)) or x == 0;
+            front = whiteYmax[x] > y or whiteYmax[x] == -1;
+            right = (x < 7 and (whiteYmax[x + 1] >= y or whiteYmax[x + 1] == -1)) or x == 7;
+
+            if left and front and right:
+                score -= scores[is_end_game][7 - y];
+
+    return score
+
 def evaluate(board):
     pm = board.piece_map()
 
@@ -114,6 +163,8 @@ def evaluate(board):
     score += psq(pm) / 4
 
     score += mobility(board) * 10
+
+    score += passed_pawn(pm, False) # FIXME
 
 #   pfm = pm_to_filemap(pm)
 
@@ -150,12 +201,10 @@ def pc_to_list(board, moves_first):
 
         if board.is_capture(m): # FIXME
             victim_type = victim_type_for_move(board, m)
-
             c.score += pmaterial_table[victim_type] << 18
 
-
-        #	me = board.piece_at(m.from_square)
-        #	score += (material_table['Q'] - material_table[me.symbol()]) << 8
+            me = board.piece_at(m.from_square)
+            c.score += (pmaterial_table[chess.QUEEN] - pmaterial_table[me.piece_type]) << 8
 
         # -20 elo: 
         #else:
@@ -169,11 +218,12 @@ def pc_to_list(board, moves_first):
             if m.move == moves_first[i]:
                 m.score = infinite - i
 
-    return sorted(out, key=operator.attrgetter('score'), reverse = True)
+    out.sort(key=operator.attrgetter('score'), reverse = True)
+
+    return out
 
 def blind(board, m):
     victim_type = victim_type_for_move(board, m)
-
     victim_eval = pmaterial_table[victim_type]
 
     me_type = board.piece_type_at(m.from_square)
@@ -335,6 +385,9 @@ def search(board, alpha, beta, depth, siblings, max_depth, is_nm):
 
     new_siblings = []
 
+    is_check = board.is_check()
+    allow_lmr = depth >= 3 and not is_check
+
     move_count = 0
     for m_work in moves:
         m = m_work.move
@@ -342,7 +395,9 @@ def search(board, alpha, beta, depth, siblings, max_depth, is_nm):
 
         new_depth = depth - 1
 
-        if depth >= 3 and move_count >= 4:
+        lmr = False
+        if allow_lmr and move_count >= 4:
+            lmr = True
             new_depth -= 1
 
             if move_count >= 6:
@@ -352,6 +407,10 @@ def search(board, alpha, beta, depth, siblings, max_depth, is_nm):
 
         result = search(board, -beta, -alpha, new_depth, new_siblings, max_depth, False)
         score = -result[0]
+
+        if score > alpha and lmr:
+            result = search(board, -beta, -alpha, depth - 1, new_siblings, max_depth, False)
+            score = -result[0]
 
         board.pop()
 
@@ -375,8 +434,6 @@ def search(board, alpha, beta, depth, siblings, max_depth, is_nm):
                     break
 
     if move_count == 0:
-        is_check = board.is_check()
-
         if not is_check:
             return (0, None)
 
