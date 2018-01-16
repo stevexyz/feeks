@@ -3,24 +3,22 @@ import chess
 class Board(chess.Board, object):
     _moves = []
 
-    __slots__ = [ '_moves' ]
-
     def _get_move_list(self):
-        return list(self.legal_moves)
+            return list(self.legal_moves)
 
     def get_move_list(self):
-        if not self._moves:
-            self._moves.append(self._get_move_list())
+            if not self._moves:
+                    self._moves.append(self._get_move_list())
 
-        return self._moves[-1]
+            return self._moves[-1]
 
     def move_count(self):
-        return len(self.get_move_list())
+            return len(self.get_move_list())
 
     def push(self, m):
-        super(Board, self).push(m)
+            super(Board, self).push(m)
 
-        self._moves.append(self._get_move_list())
+            self._moves.append(self._get_move_list())
 
     def pop(self):
         del self._moves[-1]
@@ -28,15 +26,15 @@ class Board(chess.Board, object):
         return super(Board, self).pop()
 
     def _set_lists(self, lists):
-        self._moves = lists
+            self._moves = lists
 
     def _clear(self):
-        self._moves = []
+            self._moves = []
 
     def copy(self):
-        c = super(Board, self).copy()
-        c._clear()
-        return c
+            c = super(Board, self).copy()
+            c._clear()
+            return c
 
     def get_stats(self):
-        return { 'len' : len(self._moves) }
+            return { 'len' : len(self._moves) }
