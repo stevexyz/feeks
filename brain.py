@@ -16,6 +16,8 @@ import threading
 import time
 import traceback
 
+with_qs = True
+
 stats_node_count = 0
 stats_tt_checks = stats_tt_hits = 0
 stats_avg_bco_index_cnt = stats_avg_bco_index = 0
@@ -41,11 +43,11 @@ def get_stats():
     global stats_avg_bco_index, stats_node_count, stats_tt_hits, stats_tt_checks
 
     return { 'stats_node_count' : stats_node_count,
-            'stats_tt_hits' : stats_tt_hits,
-            'stats_tt_checks' : stats_tt_checks,
-            'stats_avg_bco_index_cnt' : stats_avg_bco_index_cnt,
-            'stats_avg_bco_index' : stats_avg_bco_index
-            }
+        'stats_tt_hits' : stats_tt_hits,
+        'stats_tt_checks' : stats_tt_checks,
+        'stats_avg_bco_index_cnt' : stats_avg_bco_index_cnt,
+        'stats_avg_bco_index' : stats_avg_bco_index
+        }
 
 def reset_stats():
     global stats_avg_bco_index_cnt, stats_avg_bco_index, stats_node_count, stats_tt_hits, stats_tt_checks
@@ -73,7 +75,7 @@ def mobility(board, hash_):
     return white_n - black_n
 
 def pm_to_filemap(piece_map):
-    files = [[[0 for k in xrange(8)] for j in xrange(7)] for i in xrange(2)]
+    files = [[[0 for k in range(8)] for j in range(7)] for i in range(2)]
 
     for p in piece_map:
         piece = piece_map[p]
@@ -85,7 +87,7 @@ def pm_to_filemap(piece_map):
 def count_double_pawns(file_map):
     n = 0
 
-    for i in xrange(0, 8):
+    for i in range(0, 8):
         if file_map[chess.WHITE][chess.PAWN][i] >= 2:
             n += file_map[chess.WHITE][chess.PAWN][i] - 1
 
@@ -97,7 +99,7 @@ def count_double_pawns(file_map):
 def count_rooks_on_open_file(file_map):
     n = 0
 
-    for i in xrange(0, 8):
+    for i in range(0, 8):
         if file_map[chess.WHITE][chess.PAWN][i] == 0 and file_map[chess.WHITE][chess.ROOK][i] > 0:
             n += 1
 
@@ -212,7 +214,7 @@ def pc_to_list(board, moves_first, hash_):
 
         out.append(c)
 
-    for i in xrange(0, len(moves_first)):
+    for i in range(0, len(moves_first)):
         for m in out:
             if m.move == moves_first[i]:
                 m.score = infinite - i
@@ -343,16 +345,19 @@ def search(board, alpha, beta, depth, siblings, max_depth, is_nm):
         return (0, None)
 
     if depth == 0:
-        return (qs(board, alpha, beta), None)
+        if with_qs:
+            return (qs(board, alpha, beta), None)
 
-    hash_ = chess.polyglot.zobrist_hash(board)
+        v = evaluate(board)
+
+        return (-v if board.turn == chess.BLACK else v, None)
 
     top_of_tree = depth == max_depth
 
+    hash_ = chess.polyglot.zobrist_hash(board)
+
     global stats_node_count
     stats_node_count += 1
-
-    h = chess.polyglot.zobrist_hash(board)
 
     global stats_tt_checks
     stats_tt_checks += 1
@@ -482,7 +487,7 @@ def calc_move(board, max_think_time, max_depth):
 
     siblings = []
     start_ts = time.time()
-    for d in xrange(1, max_depth + 1):
+    for d in range(1, max_depth + 1):
         cur_result = search(board, alpha, beta, d, siblings, d, False)
 
         diff_ts = time.time() - start_ts
@@ -500,7 +505,7 @@ def calc_move(board, max_think_time, max_depth):
             pv = tt_get_pv(board, cur_result[1])
             msg = 'depth %d score cp %d time %d nodes %d pv %s' % (d, cur_result[0], diff_ts_ms, stats['stats_node_count'], pv)
 
-            print 'info %s' % msg
+            print('info %s' % msg)
             sys.stdout.flush()
 
             l(msg)

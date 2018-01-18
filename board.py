@@ -9,44 +9,51 @@ q_hit = q_miss = 0
 def init_board_ht():
     global ht, ht_size, ht_sub_size
 
-    ht = [[[None, None] for i in xrange(ht_sub_size)] for i in xrange(ht_size)]
+    ht = [[[None, None] for i in range(ht_sub_size)] for i in range(ht_size)]
 
 class Board(chess.Board, object):
-	_moves = []
+    def _get_move_list(self, h):
+        global ht, ht_size, ht_sub_size
+        global q_hit, q_miss
 
-        __slots__ = [ '_moves' ]
+        idx = h % ht_size
 
-	def _get_move_list(self, h):
-                global ht, ht_size, ht_sub_size
-                global q_hit, q_miss
+        for i in range(0, ht_sub_size):
+            if ht[idx][i][0] == h:
+                q_hit += 1
 
-		idx = h % ht_size
+                if i:
+                    ht[idx].insert(0, ht[idx].pop(i))
 
-                for i in xrange(0, ht_sub_size):
-                    if ht[idx][i][0] == h:
-                            q_hit += 1
+                return ht[idx][0][1]
 
-                            temp = ht[idx][i]
-                            del ht[idx][i]
-                            ht[idx].insert(0, temp)
+        q_miss += 1
 
-                            return temp[1]
+        return None
 
-                q_miss += 1
+    def _put_move_list(self, h):
+        global ht, ht_size
 
-		out = list(self.legal_moves)
+        idx = h % ht_size
 
-                del ht[idx][-1]
-                ht[idx].insert(0, [ h, out ])
+        out = list(self.legal_moves)
 
-		return out
+        del ht[idx][-1]
+        ht[idx].insert(0, [ h, out ])
 
-	def get_move_list(self, h):
-		return self._get_move_list(h)
+        return out
 
-	def move_count(self, h):
-		return len(self._get_move_list(h))
+    def get_move_list(self, h):
+        out = self._get_move_list(h)
 
-        def get_stats(self):
-                global q_hit, q_miss
-                return { 'hit' : q_hit * 100.0 / (q_hit + q_miss) }
+        if not out:
+            out = self._put_move_list(h)
+
+        return out
+
+    def move_count(self, h):
+        return len(self.get_move_list(h))
+
+    def get_stats(self):
+        global q_hit, q_miss
+        return { 'hit' : q_hit * 100.0 / (q_hit + q_miss) }

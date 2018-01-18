@@ -30,7 +30,7 @@ def tt_init(size):
 
     dummy_move = chess.Move(0, 0)
 
-    tt = [[tt_element(None, None, None, -1, -1, None) for i in xrange(tt_sub_size)] for i in xrange(tt_size)]
+    tt = [[tt_element(None, None, None, -1, -1, None) for i in range(tt_sub_size)] for i in range(tt_size)]
 
 def tt_inc_age():
     global tt_age
@@ -59,7 +59,7 @@ def tt_store(board, alpha, beta, score, move, depth, h):
     use_ss2 = None
     min_depth = 99999
 
-    for i in xrange(0, tt_sub_size):
+    for i in range(0, tt_sub_size):
         if tt[idx][i].hash_ == h:
             if tt[idx][i].depth > depth:
                 return
@@ -76,8 +76,8 @@ def tt_store(board, alpha, beta, score, move, depth, h):
             min_depth = tt[idx][i].depth
             use_ss2 = i
 
-    if not use_ss:
-        use_ss = use_ss2
+        if not use_ss:
+            use_ss = use_ss2
 
     tt[idx][use_ss] = tt_element(h, score, flags, depth, tt_age, move)
 
@@ -86,7 +86,7 @@ def tt_lookup(board, h):
 
     idx = tt_calc_slot(h)
 
-    for i in xrange(0, tt_sub_size):
+    for i in range(0, tt_sub_size):
         if tt[idx][i].hash_ == h:
             if tt[idx][i].move == None or tt[idx][i].move in board.get_move_list(h):
                 return tt[idx][i]
@@ -118,7 +118,7 @@ def tt_get_pv(board, first_move):
 
         n += 1
 
-    for r in xrange(0, n):
+    for r in range(0, n):
         board.pop()
 
     return pv
