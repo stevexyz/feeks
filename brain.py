@@ -112,14 +112,12 @@ def passed_pawn(pm, is_end_game):
     whiteYmax = [ -1 ] * 8
     blackYmin = [ 8 ] * 8
 
-    for P in pm:
-        p = pm[P]
-
+    for key, p in pm.items():
         if p.piece_type != chess.PAWN:
             continue
 
-        x = P & 7
-        y = P >> 3
+        x = key & 7
+        y = key >> 3
 
         if p.color == chess.WHITE:
             whiteYmax[x] = max(whiteYmax[x], y)
@@ -130,14 +128,12 @@ def passed_pawn(pm, is_end_game):
 
     score = 0
 
-    for P in pm:
-        p = pm[P]
-
+    for key, p in pm.items():
         if p.piece_type != chess.PAWN:
             continue
 
-        x = P & 7
-        y = P >> 3
+        x = key & 7
+        y = key >> 3
 
         if p.color == chess.WHITE:
             left = (x > 0 and (blackYmin[x - 1] <= y or blackYmin[x - 1] == 8)) or x == 0;
