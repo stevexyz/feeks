@@ -11,6 +11,7 @@ from multiprocessing import Queue
 from select import select
 import sys
 import threading
+from threading import Thread
 import time
 import traceback
 from tt import tt_init, tt_lookup
@@ -48,11 +49,11 @@ class stdin_reader(threading.Thread):
 
 def perft(board, depth):
     if depth == 1:
-        return board.legal_moves.count()
+        return board.move_count()
 
     total = 0
 
-    for m in board.legal_moves:
+    for m in board.get_move_list():
         board.push(m)
         total += perft(board, depth - 1)
         board.pop()
@@ -150,7 +151,7 @@ def main():
                 start = time.time()
                 total = 0
 
-                for m in board.legal_moves:
+                for m in board.get_move_list():
                     board.push(m)
                     cnt = perft(board, depth - 1)
                     board.pop()
@@ -189,7 +190,8 @@ def main():
 
             elif parts[0] == 'go':
                 t = wait_init_thread(t)
-                cm_thread_stop()
+                if cm_thread_stop():
+                    l('stop pondering')
 
                 movetime = None
                 depth = None
@@ -270,7 +272,7 @@ def main():
                 if depth == None:
                     depth = 999
 
-                cm_thread_start(board, current_duration, depth)
+                cm_thread_start(board, current_duration, depth, False)
 
                 line = None
                 while cm_thread_check():
@@ -294,8 +296,9 @@ def main():
                 else:
                     send('bestmove a1a1')
 
-                if ponder:
-                    cm_thread_start(board.copy())
+                if ponder and not board.is_game_over():
+                    send('info string start pondering')
+                    cm_thread_start(board.copy(), is_ponder=True)
 
             elif parts[0] == 'quit':
                 break
@@ -348,7 +351,7 @@ def main():
 
             elif parts[0] == 'probett':
                 t = wait_init_thread(t)
-                print(tt_lookup(board, chess.polyglot.zobrist_hash(board)))
+                print(tt_lookup(board))
 
             else:
                 l('unknown: %s' % parts[0])

@@ -42,7 +42,7 @@ def tt_calc_slot(h):
 
     return h % tt_size
 
-def tt_store(board, alpha, beta, score, move, depth, h):
+def tt_store(board, alpha, beta, score, move, depth):
     global tt_sub_size, tt, tt_age
 
     if score <= alpha:
@@ -52,6 +52,7 @@ def tt_store(board, alpha, beta, score, move, depth, h):
     else:
         flags = 'E'
 
+    h = board.get_zh()
     idx = tt_calc_slot(h)
 
     use_ss = None
@@ -81,9 +82,10 @@ def tt_store(board, alpha, beta, score, move, depth, h):
 
     tt[idx][use_ss] = tt_element(h, score, flags, depth, tt_age, move)
 
-def tt_lookup(board, h):
+def tt_lookup(board):
     global tt_sub_size, tt
 
+    h = board.get_zh()
     idx = tt_calc_slot(h)
 
     for i in range(0, tt_sub_size):
@@ -102,9 +104,7 @@ def tt_get_pv(b, first_move):
     hist = set()
 
     while True:
-        h = chess.polyglot.zobrist_hash(board)
-
-        hit = tt_lookup(board, h)
+        hit = tt_lookup(board)
         if not hit or not hit.move:
             break
 

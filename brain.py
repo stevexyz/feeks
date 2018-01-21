@@ -75,12 +75,10 @@ def mobility(board):
     return white_n - black_n
 
 def pm_to_filemap(piece_map):
-    files = [[[0 for k in range(8)] for j in range(7)] for i in range(2)]
+    files = [ 0 ] * (8 * 7 * 2)
 
-    for p in piece_map:
-        piece = piece_map[p]
-
-        files[piece.color][piece.piece_type][p & 7] += 1
+    for p, piece in piece_map.items():
+        files[piece.color * 8 * 7 + piece.piece_type * 8 + (p & 7)] += 1
 
     return files
 
@@ -88,11 +86,11 @@ def count_double_pawns(file_map):
     n = 0
 
     for i in range(0, 8):
-        if file_map[chess.WHITE][chess.PAWN][i] >= 2:
-            n += file_map[chess.WHITE][chess.PAWN][i] - 1
+        if file_map[chess.WHITE * 8 * 7 + chess.PAWN * 8 + i] >= 2:
+            n += file_map[chess.WHITE * 8 * 7 + chess.PAWN * 8 + i] - 1
 
-        if file_map[chess.BLACK][chess.PAWN][i] >= 2:
-            n -= file_map[chess.BLACK][chess.PAWN][i] - 1
+        if file_map[chess.BLACK * 8 * 7 + chess.PAWN * 8 + i] >= 2:
+            n -= file_map[chess.BLACK * 8 * 7 + chess.PAWN * 8 + i] - 1
 
     return n
 
@@ -100,10 +98,10 @@ def count_rooks_on_open_file(file_map):
     n = 0
 
     for i in range(0, 8):
-        if file_map[chess.WHITE][chess.PAWN][i] == 0 and file_map[chess.WHITE][chess.ROOK][i] > 0:
+        if file_map[chess.WHITE * 8 * 7 + chess.PAWN * 8 + i] == 0 and file_map[chess.WHITE * 8 * 7 + chess.ROOK * 8 + i] > 0:
             n += 1
 
-        if file_map[chess.BLACK][chess.PAWN][i] == 0 and file_map[chess.BLACK][chess.ROOK][i] > 0:
+        if file_map[chess.BLACK * 8 * 7 + chess.PAWN * 8 + i] == 0 and file_map[chess.BLACK * 8 * 7 + chess.ROOK * 8 + i] > 0:
             n -= 1
 
     return n
@@ -160,15 +158,15 @@ def evaluate(board):
 
     score += psq(pm) / 4
 
-    score += mobility(board) * 10
+#    score += mobility(board) * 10
 
     score += passed_pawn(pm, False) # FIXME
 
-#   pfm = pm_to_filemap(pm)
+#    pfm = pm_to_filemap(pm)
 
-#   score += count_double_pawns(pfm)
+#    score += count_double_pawns(pfm)
 
-#   score += count_rooks_on_open_file(pfm)
+#    score += count_rooks_on_open_file(pfm)
 
     if board.turn:
         return score
@@ -306,8 +304,8 @@ def qs(board, alpha, beta):
 
     return best
 
-def tt_lookup_helper(board, alpha, beta, depth, h):
-    tt_hit = tt_lookup(board, h)
+def tt_lookup_helper(board, alpha, beta, depth):
+    tt_hit = tt_lookup(board)
     if not tt_hit:
         return None
 
@@ -351,11 +349,9 @@ def search(board, alpha, beta, depth, siblings, max_depth, is_nm):
     global stats_node_count
     stats_node_count += 1
 
-    h = chess.polyglot.zobrist_hash(board)
-
     global stats_tt_checks
     stats_tt_checks += 1
-    tt_hit = tt_lookup_helper(board, alpha, beta, depth, h)
+    tt_hit = tt_lookup_helper(board, alpha, beta, depth)
     if tt_hit:
         global stats_tt_hits
         stats_tt_hits += 1
@@ -447,11 +443,11 @@ def search(board, alpha, beta, depth, siblings, max_depth, is_nm):
         if best >= alpha_orig:
             bm = best_move
 
-        tt_store(board, alpha_orig, beta, best, bm, depth, h)
+        tt_store(board, alpha_orig, beta, best, bm, depth)
 
     return (best, best_move)
 
-def calc_move(board, max_think_time, max_depth):
+def calc_move(board, max_think_time, max_depth, is_ponder):
     global to_flag
     to_flag = threading.Event()
     to_flag.clear()
@@ -466,7 +462,7 @@ def calc_move(board, max_think_time, max_depth):
 
     l(board.fen())
 
-    if board.move_count() == 1:
+    if board.move_count() == 1 and not is_ponder:
         l('only 1 move possible')
 
         for m in board.get_move_list():
@@ -498,8 +494,9 @@ def calc_move(board, max_think_time, max_depth):
             pv = tt_get_pv(board, cur_result[1])
             msg = 'depth %d score cp %d time %d nodes %d pv %s' % (d, cur_result[0], diff_ts_ms, stats['stats_node_count'], pv)
 
-            print('info %s' % msg)
-            sys.stdout.flush()
+            if not is_ponder:
+                print('info %s' % msg)
+                sys.stdout.flush()
 
             l(msg)
 
@@ -549,11 +546,11 @@ def calc_move(board, max_think_time, max_depth):
 
     return result
 
-def calc_move_wrapper(board, duration, depth):
+def calc_move_wrapper(board, duration, depth, is_ponder):
     global thread_result
 
     try:
-        thread_result = calc_move(board, duration, depth)
+        thread_result = calc_move(board, duration, depth, is_ponder)
 
     except Exception as ex:
         l(str(ex))
@@ -576,9 +573,9 @@ def random_move(board):
 thread = None
 thread_result = None
 
-def cm_thread_start(board,duration=None,depth=999999):
+def cm_thread_start(board, duration=None, depth=999999, is_ponder=False):
     global thread
-    thread = threading.Thread(target=calc_move_wrapper, args=(board,duration,depth,))
+    thread = threading.Thread(target=calc_move_wrapper, args=(board,duration,depth,is_ponder,))
     thread.start()
 
 def cm_thread_check():
@@ -596,10 +593,12 @@ def cm_thread_stop():
         set_to_flag(to_flag)
 
     global thread
-    if thread:
-        thread.join()
-        del thread
-        thread = None
+    if not thread:
+        return None
+
+    thread.join()
+    del thread
+    thread = None
 
     global thread_result
     return thread_result
