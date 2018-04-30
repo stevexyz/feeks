@@ -23,6 +23,7 @@ ponder = False
 benchmark = False
 epd = False
 
+
 class stdin_reader(threading.Thread):
     q = Queue()
 
@@ -47,6 +48,7 @@ class stdin_reader(threading.Thread):
         except:
             return None
 
+
 def perft(board, depth):
     if depth == 1:
         return board.move_count()
@@ -60,10 +62,12 @@ def perft(board, depth):
 
     return total
 
+
 def send(str_):
     print(str_)
     l('OUT: %s' % str_)
     sys.stdout.flush()
+
 
 def wait_init_thread(t):
     if not t:
@@ -76,6 +80,7 @@ def wait_init_thread(t):
     send('info string initialized')
 
     return None
+
 
 def main():
     t = threading.Thread(target=init_thread)
@@ -103,8 +108,8 @@ def main():
             parts = line.split(' ')
             
             if parts[0] == 'uci':
-                send('id name Feeks')
-                send('id author Folkert van Heusden <mail@vanheusden.com>')
+                send('id name Mlego-Feeks')
+                send('id author Stefano Marago\' adaptation of Folkert van Heusden engine')
                 send('uciok')
 
             elif parts[0] == 'isready':
@@ -233,7 +238,6 @@ def main():
                         l('unknown: %s' % parts[nr])
 
                     nr += 1
-
 ###
                 current_duration = movetime
 
@@ -369,12 +373,15 @@ def main():
         l(str(ex))
         l(traceback.format_exc())
 
+
 def init_thread():
     tt_init(tt_n_elements)
+
 
 def benchmark_test():
     board = Board()
     calc_move(board, 60.0, 999999)
+
 
 def epd_test(str_):
     parts = str_.split(';')
@@ -402,6 +409,8 @@ def epd_test(str_):
         else:
             print('FAIL!')
             sys.exit(1)
+
+#--------
 
 if len(sys.argv) == 2:
     set_l(sys.argv[1])

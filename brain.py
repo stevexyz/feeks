@@ -33,11 +33,30 @@ pmaterial_table[chess.ROOK] = 500
 pmaterial_table[chess.QUEEN] = 975
 pmaterial_table[chess.KING] = 10000
 
+
+### SlyMlego evaluation
+
+sys.path.append("..")
+#import Const
+from Eval import Eval
+board = chess.Board()
+eval = Eval(quiet=True)
+eval.EvaluatePositionB(board) # just to startup engine
+def evaluate(board):
+    score = eval.EvaluatePositionB(board)[0]
+    if board.turn:
+        return score
+    return -score
+
+#######################
+
+
 to_flag = None
 
 def set_to_flag(to_flag):
     to_flag.set()
     l("time is up");
+
 
 def get_stats():
     global stats_avg_bco_index, stats_node_count, stats_tt_hits, stats_tt_checks
@@ -49,129 +68,16 @@ def get_stats():
         'stats_avg_bco_index' : stats_avg_bco_index
         }
 
+
 def reset_stats():
     global stats_avg_bco_index_cnt, stats_avg_bco_index, stats_node_count, stats_tt_hits, stats_tt_checks
 
     stats_avg_bco_index_cnt = stats_avg_bco_index = stats_node_count = stats_tt_checks = stats_tt_hits = 0
 
+
 def material(pm):
     return sum((1 if pm[p].color else -1) * pmaterial_table[pm[p].piece_type] for p in pm)
 
-def mobility(board):
-    if board.turn:
-        white_n = board.move_count()
-
-        board.push(chess.Move.null())
-        black_n = board.move_count()
-        board.pop()
-
-    else:
-        black_n = board.move_count()
-
-        board.push(chess.Move.null())
-        white_n = board.move_count()
-        board.pop()
-
-    return white_n - black_n
-
-def pm_to_filemap(piece_map):
-    files = [ 0 ] * (8 * 7 * 2)
-
-    for p, piece in piece_map.items():
-        files[piece.color * 8 * 7 + piece.piece_type * 8 + (p & 7)] += 1
-
-    return files
-
-def count_double_pawns(file_map):
-    n = 0
-
-    for i in range(0, 8):
-        if file_map[chess.WHITE * 8 * 7 + chess.PAWN * 8 + i] >= 2:
-            n += file_map[chess.WHITE * 8 * 7 + chess.PAWN * 8 + i] - 1
-
-        if file_map[chess.BLACK * 8 * 7 + chess.PAWN * 8 + i] >= 2:
-            n -= file_map[chess.BLACK * 8 * 7 + chess.PAWN * 8 + i] - 1
-
-    return n
-
-def count_rooks_on_open_file(file_map):
-    n = 0
-
-    for i in range(0, 8):
-        if file_map[chess.WHITE * 8 * 7 + chess.PAWN * 8 + i] == 0 and file_map[chess.WHITE * 8 * 7 + chess.ROOK * 8 + i] > 0:
-            n += 1
-
-        if file_map[chess.BLACK * 8 * 7 + chess.PAWN * 8 + i] == 0 and file_map[chess.BLACK * 8 * 7 + chess.ROOK * 8 + i] > 0:
-            n -= 1
-
-    return n
-
-def passed_pawn(pm, is_end_game):
-    whiteYmax = [ -1 ] * 8
-    blackYmin = [ 8 ] * 8
-
-    for key, p in pm.items():
-        if p.piece_type != chess.PAWN:
-            continue
-
-        x = key & 7
-        y = key >> 3
-
-        if p.color == chess.WHITE:
-            whiteYmax[x] = max(whiteYmax[x], y)
-        else:
-            blackYmin[x] = min(blackYmin[x], y)
-
-    scores = [ [ 0, 5, 20, 30, 40, 50, 80, 0 ], [ 0, 5, 20, 40, 70, 120, 200, 0 ] ]
-
-    score = 0
-
-    for key, p in pm.items():
-        if p.piece_type != chess.PAWN:
-            continue
-
-        x = key & 7
-        y = key >> 3
-
-        if p.color == chess.WHITE:
-            left = (x > 0 and (blackYmin[x - 1] <= y or blackYmin[x - 1] == 8)) or x == 0;
-            front = blackYmin[x] < y or blackYmin[x] == 8;
-            right = (x < 7 and (blackYmin[x + 1] <= y or blackYmin[x + 1] == 8)) or x == 7;
-
-            if left and front and right:
-                score += scores[is_end_game][y];
-
-        else:
-            left = (x > 0 and (whiteYmax[x - 1] >= y or whiteYmax[x - 1] == -1)) or x == 0;
-            front = whiteYmax[x] > y or whiteYmax[x] == -1;
-            right = (x < 7 and (whiteYmax[x + 1] >= y or whiteYmax[x + 1] == -1)) or x == 7;
-
-            if left and front and right:
-                score -= scores[is_end_game][7 - y];
-
-    return score
-
-def evaluate(board):
-    pm = board.piece_map()
-
-    score = material(pm)
-
-    score += psq(pm) / 4
-
-#    score += mobility(board) * 10
-
-    score += passed_pawn(pm, False) # FIXME
-
-#    pfm = pm_to_filemap(pm)
-
-#    score += count_double_pawns(pfm)
-
-#    score += count_rooks_on_open_file(pfm)
-
-    if board.turn:
-        return score
-
-    return -score
 
 class pc_move(object):
     __slots__ = ['score', 'move']
@@ -180,11 +86,13 @@ class pc_move(object):
         self.score = score
         self.move = move
 
+
 def victim_type_for_move(board, m):
     if board.is_en_passant(m):
         return chess.PAWN
 
     return board.piece_type_at(m.to_square)
+
 
 def pc_to_list(board, moves_first):
     out = []
@@ -218,6 +126,7 @@ def pc_to_list(board, moves_first):
 
     return out
 
+
 def blind(board, m):
     victim_type = victim_type_for_move(board, m)
     victim_eval = pmaterial_table[victim_type]
@@ -227,6 +136,7 @@ def blind(board, m):
 
     return victim_eval < me_eval and board.attackers(not board.turn, m.to_square)
 
+
 def is_draw(board):
     if board.halfmove_clock >= 100:
         return True
@@ -234,6 +144,7 @@ def is_draw(board):
     # FIXME enough material counts
 
     return False
+
 
 def qs(board, alpha, beta):
     global to_flag
@@ -304,6 +215,7 @@ def qs(board, alpha, beta):
 
     return best
 
+
 def tt_lookup_helper(board, alpha, beta, depth):
     tt_hit = tt_lookup(board)
     if not tt_hit:
@@ -324,6 +236,7 @@ def tt_lookup_helper(board, alpha, beta, depth):
         return [ True, rc ]
 
     return [ False, rc ]
+
 
 def search(board, alpha, beta, depth, siblings, max_depth, is_nm):
     global to_flag
@@ -447,6 +360,7 @@ def search(board, alpha, beta, depth, siblings, max_depth, is_nm):
 
     return (best, best_move)
 
+
 def calc_move(board, max_think_time, max_depth, is_ponder):
     global to_flag
     to_flag = threading.Event()
@@ -546,6 +460,7 @@ def calc_move(board, max_think_time, max_depth, is_ponder):
 
     return result
 
+
 def calc_move_wrapper(board, duration, depth, is_ponder):
     global thread_result
 
@@ -558,7 +473,9 @@ def calc_move_wrapper(board, duration, depth, is_ponder):
 
         thread_result = None
 
+
 import random
+
 def random_move(board):
     moves = board.get_move_list()
     idx = random.randint(0, len(moves) - 1)
@@ -573,10 +490,12 @@ def random_move(board):
 thread = None
 thread_result = None
 
+
 def cm_thread_start(board, duration=None, depth=999999, is_ponder=False):
     global thread
     thread = threading.Thread(target=calc_move_wrapper, args=(board,duration,depth,is_ponder,))
     thread.start()
+
 
 def cm_thread_check():
     global thread
@@ -586,6 +505,7 @@ def cm_thread_check():
         return thread.is_alive()
 
     return False
+
 
 def cm_thread_stop():
     global to_flag
