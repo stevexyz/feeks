@@ -6,7 +6,7 @@
 import chess
 import chess.pgn
 import collections
-from psq import psq, psq_individual
+#from psq import psq, psq_individual
 from tt import tt_inc_age, tt_store, tt_lookup, tt_get_pv
 from log import l
 import math
@@ -34,7 +34,7 @@ pmaterial_table[chess.QUEEN] = 975
 pmaterial_table[chess.KING] = 10000
 
 
-### SlyMlego evaluation
+### SlyMlego evaluation ###
 
 sys.path.append("..")
 #import Const
@@ -42,13 +42,14 @@ from Eval import Eval
 board = chess.Board()
 eval = Eval(quiet=True)
 eval.EvaluatePositionB(board) # just to startup engine
+
 def evaluate(board):
     score = eval.EvaluatePositionB(board)[0]
     if board.turn:
         return score
     return -score
 
-#######################
+###########################
 
 
 to_flag = None
@@ -109,11 +110,6 @@ def pc_to_list(board, moves_first):
 
             me = board.piece_at(m.from_square)
             c.score += (pmaterial_table[chess.QUEEN] - pmaterial_table[me.piece_type]) << 8
-
-        # -20 elo: 
-        #else:
-        #	me = board.piece_at(m.from_square)
-        #	score += psq_individual(m.to_square, me) - psq_individual(m.from_square, me)
 
         out.append(c)
 
